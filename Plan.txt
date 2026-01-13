@@ -1,0 +1,31 @@
+This application looks at various sources to aggregate the latest security vulnerabilities and
+adversaries that target the following assets:
+
+- WatchGuard Firebox
+- WatchGuard VPN
+- HPE Alletra Nimble Storage
+- HPE ProLiant DL380 Servers
+- Tripplite UPS
+- Cisco IOS
+- Cisco Catalyst 9500 Switches
+- Cisco Catalyst 9300 Switches
+- Cisco SG500
+- Cisco Catalyst 3750 Switches
+- Cisco Catalyst 3650 Switches
+- Cisco Nexus 93810 Switches
+- SolarWinds
+- Oracle Database Appliances
+- Veeam
+- Zerto
+- ConnectWise
+- BitDefender
+- Microsoft Teams
+- Zoom
+- Google Chrome
+- Microsoft Edge
+- Firefox
+- Crestron Electronics products/software
+
+The application displays an interactive dashboard that contains  the alerts for the above assets
+if any. The application displays the historical alerts for the above assets if any. Users should see
+a toggle for how far back in time they want to see the alerts. 
