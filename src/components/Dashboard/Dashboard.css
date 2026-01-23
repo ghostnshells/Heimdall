@@ -18,6 +18,15 @@
     font-size: var(--text-3xl);
     font-weight: var(--font-bold);
     margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.dashboard-title .title-icon {
+    color: var(--accent-primary);
+    width: 32px;
+    height: 32px;
 }
 
 .dashboard-subtitle {
@@ -110,6 +119,30 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--space-4);
+}
+
+/* Asset Groups (Vendor View) */
+.asset-group {
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.asset-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.subcategory-title {
+    font-size: var(--text-lg);
+    color: var(--text-secondary);
+}
+
+.subcategory-title .asset-count {
+    font-size: var(--text-sm);
+    font-weight: var(--font-normal);
+    color: var(--text-tertiary);
+    margin-left: var(--space-2);
 }
 
 /* Loading State */

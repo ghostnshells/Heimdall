@@ -1,13 +1,33 @@
-// Asset definitions from Plan.txt
-// Each asset has metadata for display and vulnerability tracking
+// Asset definitions for Heimdall Vulnerability Monitor
+// Each asset represents a vendor or product to monitor for vulnerabilities
+// Consolidated structure: One card per major vendor (Cisco, Microsoft, HPE) with sub-products
 
+// Vendor Groups for hierarchical navigation
+export const VENDOR_GROUPS = {
+    WATCHGUARD: 'WatchGuard',
+    HPE: 'HPE',
+    CISCO: 'Cisco',
+    MICROSOFT: 'Microsoft',
+    TRIPP_LITE: 'Tripp Lite',
+    SOLARWINDS: 'SolarWinds',
+    CONNECTWISE: 'ConnectWise',
+    ORACLE: 'Oracle',
+    VEEAM: 'Veeam',
+    ZERTO: 'Zerto',
+    BITDEFENDER: 'BitDefender',
+    ZOOM: 'Zoom',
+    GOOGLE: 'Google',
+    MOZILLA: 'Mozilla',
+    CRESTRON: 'Crestron'
+};
+
+// Asset categories for filtering
 export const ASSET_CATEGORIES = {
     FIREWALL_VPN: 'Firewall & VPN',
     STORAGE: 'Storage',
     SERVERS: 'Servers',
     POWER: 'Power & UPS',
-    NETWORK: 'Network Switches',
-    NETWORK_OS: 'Network OS',
+    NETWORK: 'Network Infrastructure',
     IT_MANAGEMENT: 'IT Management',
     DATABASE: 'Database',
     BACKUP_DR: 'Backup & DR',
@@ -15,366 +35,379 @@ export const ASSET_CATEGORIES = {
     COLLABORATION: 'Collaboration',
     BROWSERS: 'Browsers',
     AV_CONTROL: 'AV & Control',
-    // New Microsoft categories
-    MICROSOFT_OS: 'Microsoft OS',
-    MICROSOFT_SERVER: 'Microsoft Server',
-    MICROSOFT_APPS: 'Microsoft Apps',
-    MICROSOFT_DEV: 'Microsoft Dev Tools'
+    OPERATING_SYSTEMS: 'Operating Systems',
+    ENTERPRISE_SOFTWARE: 'Enterprise Software'
 };
 
 export const ASSETS = [
-    // Firewall & VPN
+    // ==========================================
+    // CISCO - Consolidated vendor card
+    // Monitors: IOS, IOS XE, ISE, Catalyst switches, Nexus, Wireless LAN Controllers
+    // ==========================================
     {
-        id: 'watchguard-firebox',
-        name: 'WatchGuard Firebox',
-        vendor: 'WatchGuard',
-        category: ASSET_CATEGORIES.FIREWALL_VPN,
-        keywords: ['watchguard', 'firebox', 'firewall'],
-        cpeVendor: 'watchguard',
-        cpeProduct: 'firebox'
-    },
-    {
-        id: 'watchguard-vpn',
-        name: 'WatchGuard VPN',
-        vendor: 'WatchGuard',
-        category: ASSET_CATEGORIES.FIREWALL_VPN,
-        keywords: ['watchguard', 'vpn', 'mobile vpn', 'ipsec'],
-        cpeVendor: 'watchguard',
-        cpeProduct: 'mobile_vpn'
+        id: 'cisco',
+        name: 'Cisco',
+        vendor: 'Cisco',
+        category: ASSET_CATEGORIES.NETWORK,
+        vendorGroup: VENDOR_GROUPS.CISCO,
+        description: 'Cisco networking infrastructure including IOS, switches, and wireless controllers',
+        // Primary CPE vendor for searching
+        cpeVendor: 'cisco',
+        // Multiple CPE products to search for
+        cpeProducts: [
+            'ios',
+            'ios_xe',
+            'ios_xr',
+            'identity_services_engine',
+            'catalyst',
+            'nexus',
+            'wireless_lan_controller',
+            'aironet',
+            'meraki'
+        ],
+        // Keywords for keyword-based searching
+        keywords: [
+            'cisco ios',
+            'cisco ios xe',
+            'cisco ios xr',
+            'cisco ise',
+            'cisco identity services engine',
+            'cisco catalyst',
+            'cisco nexus',
+            'cisco wireless lan controller',
+            'cisco wlc',
+            'cisco aironet',
+            'cisco meraki'
+        ],
+        // Sub-products for display and filtering within the vendor card
+        subProducts: [
+            { id: 'ios', name: 'Cisco IOS', type: 'Software' },
+            { id: 'ios-xe', name: 'Cisco IOS XE', type: 'Software' },
+            { id: 'ios-xr', name: 'Cisco IOS XR', type: 'Software' },
+            { id: 'ise', name: 'Cisco ISE', type: 'Software' },
+            { id: 'catalyst-9500', name: 'Catalyst 9500', type: 'Switch' },
+            { id: 'catalyst-9300', name: 'Catalyst 9300', type: 'Switch' },
+            { id: 'catalyst-3750', name: 'Catalyst 3750', type: 'Switch' },
+            { id: 'catalyst-3650', name: 'Catalyst 3650', type: 'Switch' },
+            { id: 'nexus-9000', name: 'Nexus 9000 Series', type: 'Switch' },
+            { id: 'wlc', name: 'Wireless LAN Controller', type: 'Controller' },
+            { id: 'aironet', name: 'Aironet Access Points', type: 'Wireless' },
+            { id: 'meraki', name: 'Meraki', type: 'Cloud Managed' }
+        ]
     },
 
-    // Storage
+    // ==========================================
+    // MICROSOFT - Consolidated vendor card
+    // Monitors: Windows OS, Server, Office 365, Exchange, SharePoint, SQL Server, etc.
+    // ==========================================
     {
-        id: 'hpe-alletra-nimble',
-        name: 'HPE Alletra Nimble Storage',
-        vendor: 'HPE',
-        category: ASSET_CATEGORIES.STORAGE,
-        keywords: ['hpe', 'nimble', 'alletra', 'storage'],
-        cpeVendor: 'hpe',
-        cpeProduct: 'nimble_storage'
+        id: 'microsoft',
+        name: 'Microsoft',
+        vendor: 'Microsoft',
+        category: ASSET_CATEGORIES.ENTERPRISE_SOFTWARE,
+        vendorGroup: VENDOR_GROUPS.MICROSOFT,
+        description: 'Microsoft products including Windows, Office 365, Exchange, and development tools',
+        // Primary CPE vendor for searching
+        cpeVendor: 'microsoft',
+        // Multiple CPE products to search for
+        cpeProducts: [
+            'windows_10',
+            'windows_11',
+            'windows_server_2012',
+            'windows_server_2016',
+            'windows_server_2019',
+            'windows_server_2022',
+            'exchange_server',
+            'sharepoint_server',
+            'sql_server',
+            '365_apps',
+            'office',
+            'visual_studio',
+            'teams',
+            'edge_chromium',
+            'azure'
+        ],
+        // Keywords for keyword-based searching
+        keywords: [
+            'microsoft windows',
+            'windows server',
+            'microsoft exchange',
+            'microsoft sharepoint',
+            'microsoft sql server',
+            'microsoft 365',
+            'office 365',
+            'microsoft teams',
+            'microsoft edge',
+            'visual studio',
+            'microsoft azure'
+        ],
+        // Sub-products grouped by category for display
+        subProducts: [
+            // Desktop OS
+            { id: 'windows-10', name: 'Windows 10', type: 'Desktop OS', group: 'Operating Systems' },
+            { id: 'windows-11', name: 'Windows 11', type: 'Desktop OS', group: 'Operating Systems' },
+            // Server OS
+            { id: 'server-2012', name: 'Windows Server 2012', type: 'Server OS', group: 'Operating Systems' },
+            { id: 'server-2016', name: 'Windows Server 2016', type: 'Server OS', group: 'Operating Systems' },
+            { id: 'server-2019', name: 'Windows Server 2019', type: 'Server OS', group: 'Operating Systems' },
+            { id: 'server-2022', name: 'Windows Server 2022', type: 'Server OS', group: 'Operating Systems' },
+            // Microsoft 365 / Productivity
+            { id: 'office-365', name: 'Microsoft 365 / Office', type: 'Productivity', group: 'Microsoft 365' },
+            { id: 'exchange', name: 'Exchange Server', type: 'Email', group: 'Microsoft 365' },
+            { id: 'sharepoint', name: 'SharePoint', type: 'Collaboration', group: 'Microsoft 365' },
+            { id: 'teams', name: 'Microsoft Teams', type: 'Communication', group: 'Microsoft 365' },
+            // Database
+            { id: 'sql-server', name: 'SQL Server', type: 'Database', group: 'Data Platform' },
+            // Development Tools
+            { id: 'visual-studio', name: 'Visual Studio', type: 'IDE', group: 'Development' },
+            // Browsers
+            { id: 'edge', name: 'Microsoft Edge', type: 'Browser', group: 'Applications' },
+            // Cloud
+            { id: 'azure', name: 'Azure', type: 'Cloud', group: 'Cloud Services' }
+        ]
     },
 
-    // Servers
+    // ==========================================
+    // HPE - Consolidated vendor card
+    // Monitors: ProLiant servers, Alletra/Nimble Storage, iLO
+    // ==========================================
     {
-        id: 'hpe-proliant-dl380',
-        name: 'HPE ProLiant DL380',
-        vendor: 'HPE',
+        id: 'hpe',
+        name: 'HPE',
+        vendor: 'Hewlett Packard Enterprise',
         category: ASSET_CATEGORIES.SERVERS,
-        keywords: ['hpe', 'proliant', 'dl380', 'server', 'ilo'],
+        vendorGroup: VENDOR_GROUPS.HPE,
+        description: 'HPE infrastructure including ProLiant servers and Nimble/Alletra storage',
+        // Primary CPE vendor for searching
         cpeVendor: 'hpe',
-        cpeProduct: 'proliant_dl380'
+        // Additional CPE vendors (HPE uses multiple vendor strings in NVD)
+        additionalCpeVendors: ['hp', 'hewlett_packard_enterprise'],
+        // Multiple CPE products to search for
+        cpeProducts: [
+            'proliant',
+            'proliant_dl380',
+            'proliant_dl360',
+            'proliant_ml350',
+            'nimble_storage',
+            'alletra',
+            'integrated_lights-out',
+            'ilo',
+            'oneview',
+            'storeonce'
+        ],
+        // Keywords for keyword-based searching
+        keywords: [
+            'hpe proliant',
+            'hpe nimble',
+            'hpe alletra',
+            'hewlett packard enterprise',
+            'hpe ilo',
+            'integrated lights-out',
+            'hpe oneview',
+            'hpe storeonce'
+        ],
+        // Sub-products for display
+        subProducts: [
+            // Servers
+            { id: 'proliant-dl380', name: 'ProLiant DL380', type: 'Rack Server', group: 'Servers' },
+            { id: 'proliant-dl360', name: 'ProLiant DL360', type: 'Rack Server', group: 'Servers' },
+            { id: 'proliant-ml350', name: 'ProLiant ML350', type: 'Tower Server', group: 'Servers' },
+            { id: 'ilo', name: 'iLO (Integrated Lights-Out)', type: 'Management', group: 'Management' },
+            // Storage
+            { id: 'nimble', name: 'Nimble Storage', type: 'Storage', group: 'Storage' },
+            { id: 'alletra', name: 'Alletra', type: 'Storage', group: 'Storage' },
+            { id: 'storeonce', name: 'StoreOnce', type: 'Backup', group: 'Storage' },
+            // Management
+            { id: 'oneview', name: 'OneView', type: 'Management', group: 'Management' }
+        ]
     },
 
-    // Power
+    // ==========================================
+    // WatchGuard - Firewall & VPN
+    // ==========================================
+    {
+        id: 'watchguard',
+        name: 'WatchGuard',
+        vendor: 'WatchGuard',
+        category: ASSET_CATEGORIES.FIREWALL_VPN,
+        vendorGroup: VENDOR_GROUPS.WATCHGUARD,
+        description: 'WatchGuard Firebox firewalls and VPN solutions',
+        cpeVendor: 'watchguard',
+        cpeProducts: ['firebox', 'fireware', 'mobile_vpn', 'authpoint'],
+        keywords: ['watchguard', 'firebox', 'fireware', 'watchguard vpn'],
+        subProducts: [
+            { id: 'firebox', name: 'Firebox', type: 'Firewall' },
+            { id: 'fireware', name: 'Fireware OS', type: 'Software' },
+            { id: 'mobile-vpn', name: 'Mobile VPN', type: 'VPN' },
+            { id: 'authpoint', name: 'AuthPoint', type: 'MFA' }
+        ]
+    },
+
+    // ==========================================
+    // Tripp Lite - Power & UPS
+    // ==========================================
     {
         id: 'tripplite-ups',
-        name: 'Tripplite UPS',
-        vendor: 'Tripplite',
+        name: 'Tripp Lite UPS',
+        vendor: 'Tripp Lite',
         category: ASSET_CATEGORIES.POWER,
-        keywords: ['tripplite', 'tripp-lite', 'ups', 'power'],
-        cpeVendor: 'tripplite',
-        cpeProduct: 'ups'
+        vendorGroup: VENDOR_GROUPS.TRIPP_LITE,
+        description: 'Tripp Lite UPS and power management products',
+        cpeVendor: 'tripp_lite',
+        cpeProducts: ['smartpro', 'smart_online', 'smartonline', 'poweralert'],
+        keywords: ['tripp lite'],
+        preferKeywordSearch: true
     },
 
-    // Network OS
-    {
-        id: 'cisco-ios',
-        name: 'Cisco IOS',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK_OS,
-        keywords: ['cisco', 'ios', 'ios-xe', 'ios-xr'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'ios'
-    },
-
-    // Network Switches
-    {
-        id: 'cisco-catalyst-9500',
-        name: 'Cisco Catalyst 9500',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco', 'catalyst', '9500', 'switch'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'catalyst_9500'
-    },
-    {
-        id: 'cisco-catalyst-9300',
-        name: 'Cisco Catalyst 9300',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco', 'catalyst', '9300', 'switch'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'catalyst_9300'
-    },
-    {
-        id: 'cisco-sg500',
-        name: 'Cisco SG500',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco', 'sg500', 'small business', 'switch'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'sg500'
-    },
-    {
-        id: 'cisco-catalyst-3750',
-        name: 'Cisco Catalyst 3750',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco', 'catalyst', '3750', 'switch'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'catalyst_3750'
-    },
-    {
-        id: 'cisco-catalyst-3650',
-        name: 'Cisco Catalyst 3650',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco', 'catalyst', '3650', 'switch'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'catalyst_3650'
-    },
-    {
-        id: 'cisco-nexus-93180',
-        name: 'Cisco Nexus 93180',
-        vendor: 'Cisco',
-        category: ASSET_CATEGORIES.NETWORK,
-        keywords: ['cisco nexus 93180', 'nexus 9000'],
-        cpeVendor: 'cisco',
-        cpeProduct: 'nexus_93180yc-ex',
-        additionalCpeProducts: ['nexus_93180yc-fx', 'nexus_9000', 'nx-os']
-    },
-
-    // IT Management
+    // ==========================================
+    // SolarWinds - IT Management
+    // ==========================================
     {
         id: 'solarwinds',
         name: 'SolarWinds',
         vendor: 'SolarWinds',
         category: ASSET_CATEGORIES.IT_MANAGEMENT,
-        keywords: ['solarwinds', 'orion', 'npm', 'sam', 'network monitoring'],
+        vendorGroup: VENDOR_GROUPS.SOLARWINDS,
+        description: 'SolarWinds IT management and monitoring platform',
         cpeVendor: 'solarwinds',
-        cpeProduct: 'orion'
+        cpeProducts: ['orion', 'orion_platform', 'network_performance_monitor', 'server_and_application_monitor'],
+        keywords: ['solarwinds', 'orion platform', 'solarwinds npm', 'solarwinds sam']
     },
+
+    // ==========================================
+    // ConnectWise - IT Management
+    // ==========================================
     {
         id: 'connectwise',
         name: 'ConnectWise',
         vendor: 'ConnectWise',
         category: ASSET_CATEGORIES.IT_MANAGEMENT,
-        keywords: ['connectwise', 'screenconnect', 'automate', 'manage'],
+        vendorGroup: VENDOR_GROUPS.CONNECTWISE,
+        description: 'ConnectWise RMM and remote access tools',
         cpeVendor: 'connectwise',
-        cpeProduct: 'screenconnect'
+        cpeProducts: ['screenconnect', 'automate', 'control', 'manage'],
+        keywords: ['connectwise', 'screenconnect', 'connectwise automate', 'connectwise manage']
     },
 
-    // Database
+    // ==========================================
+    // Oracle - Database
+    // ==========================================
     {
-        id: 'oracle-database-appliance',
-        name: 'Oracle Database Appliances',
+        id: 'oracle-database',
+        name: 'Oracle Database',
         vendor: 'Oracle',
         category: ASSET_CATEGORIES.DATABASE,
-        keywords: ['oracle', 'database', 'oda', 'appliance', 'db'],
+        vendorGroup: VENDOR_GROUPS.ORACLE,
+        description: 'Oracle Database and related products',
         cpeVendor: 'oracle',
-        cpeProduct: 'database'
+        cpeProducts: ['database', 'database_server', 'enterprise_manager'],
+        keywords: ['oracle database', 'oracle db', 'oracle enterprise manager']
     },
 
-    // Backup & DR
+    // ==========================================
+    // Veeam - Backup & DR
+    // ==========================================
     {
         id: 'veeam',
         name: 'Veeam',
         vendor: 'Veeam',
         category: ASSET_CATEGORIES.BACKUP_DR,
-        keywords: ['veeam'],
+        vendorGroup: VENDOR_GROUPS.VEEAM,
+        description: 'Veeam backup and replication solutions',
         cpeVendor: 'veeam',
-        cpeProduct: 'veeam_backup_\\&_replication',
-        // Additional CPE products (NVD uses different formats for Veeam)
-        additionalCpeProducts: ['backup_and_replication', 'veeam_agent_for_windows', 'one'],
-        // Use keyword search as primary for this asset (CPE matching is unreliable)
+        cpeProducts: ['backup_and_replication', 'veeam_backup_\\&_replication', 'one', 'agent'],
+        keywords: ['veeam'],
         preferKeywordSearch: true
     },
+
+    // ==========================================
+    // Zerto - Backup & DR
+    // ==========================================
     {
         id: 'zerto',
         name: 'Zerto',
         vendor: 'Zerto',
         category: ASSET_CATEGORIES.BACKUP_DR,
-        keywords: ['zerto', 'disaster recovery', 'replication', 'dr'],
+        vendorGroup: VENDOR_GROUPS.ZERTO,
+        description: 'Zerto disaster recovery and replication',
         cpeVendor: 'zerto',
-        cpeProduct: 'virtual_replication'
+        cpeProducts: ['virtual_replication', 'zerto'],
+        keywords: ['zerto', 'zerto virtual replication']
     },
 
-    // Security
+    // ==========================================
+    // BitDefender - Security
+    // ==========================================
     {
         id: 'bitdefender',
         name: 'BitDefender',
         vendor: 'BitDefender',
         category: ASSET_CATEGORIES.SECURITY,
-        keywords: ['bitdefender', 'antivirus', 'endpoint', 'gravityzone'],
+        vendorGroup: VENDOR_GROUPS.BITDEFENDER,
+        description: 'BitDefender endpoint security and GravityZone',
         cpeVendor: 'bitdefender',
-        cpeProduct: 'gravityzone'
+        cpeProducts: ['gravityzone', 'endpoint_security', 'total_security'],
+        keywords: ['bitdefender', 'gravityzone']
     },
 
-    // Collaboration
-    {
-        id: 'microsoft-teams',
-        name: 'Microsoft Teams',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.COLLABORATION,
-        keywords: ['microsoft', 'teams', 'office 365', 'm365'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'teams'
-    },
+    // ==========================================
+    // Zoom - Collaboration
+    // ==========================================
     {
         id: 'zoom',
-        name: 'Zoom Video Conferencing',
+        name: 'Zoom',
         vendor: 'Zoom Video Communications',
         category: ASSET_CATEGORIES.COLLABORATION,
-        keywords: ['zoom video communications', 'zoom meetings', 'zoom client'],
+        vendorGroup: VENDOR_GROUPS.ZOOM,
+        description: 'Zoom video conferencing and collaboration',
         cpeVendor: 'zoom',
-        cpeProduct: 'meetings'
+        cpeProducts: ['meetings', 'zoom', 'zoom_client', 'workplace', 'rooms'],
+        keywords: ['zoom video communications', 'zoom meetings', 'zoom client']
     },
 
-    // Browsers
+    // ==========================================
+    // Google Chrome - Browsers
+    // ==========================================
     {
         id: 'google-chrome',
         name: 'Google Chrome',
         vendor: 'Google',
         category: ASSET_CATEGORIES.BROWSERS,
-        keywords: ['google', 'chrome', 'chromium', 'browser'],
+        vendorGroup: VENDOR_GROUPS.GOOGLE,
+        description: 'Google Chrome web browser',
         cpeVendor: 'google',
-        cpeProduct: 'chrome'
+        cpeProducts: ['chrome'],
+        keywords: ['google chrome', 'chrome browser']
     },
-    {
-        id: 'microsoft-edge',
-        name: 'Microsoft Edge',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.BROWSERS,
-        keywords: ['microsoft edge browser', 'edge chromium'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'edge_chromium'
-    },
+
+    // ==========================================
+    // Firefox - Browsers
+    // ==========================================
     {
         id: 'firefox',
         name: 'Firefox',
         vendor: 'Mozilla',
         category: ASSET_CATEGORIES.BROWSERS,
-        keywords: ['mozilla', 'firefox', 'browser'],
+        vendorGroup: VENDOR_GROUPS.MOZILLA,
+        description: 'Mozilla Firefox web browser',
         cpeVendor: 'mozilla',
-        cpeProduct: 'firefox'
+        cpeProducts: ['firefox'],
+        keywords: ['mozilla firefox', 'firefox browser']
     },
 
-    // AV & Control
+    // ==========================================
+    // Crestron - AV & Control
+    // ==========================================
     {
         id: 'crestron',
-        name: 'Crestron Electronics',
+        name: 'Crestron',
         vendor: 'Crestron',
         category: ASSET_CATEGORIES.AV_CONTROL,
-        keywords: ['crestron', 'av', 'control', 'automation', 'touch panel'],
+        vendorGroup: VENDOR_GROUPS.CRESTRON,
+        description: 'Crestron AV and control systems',
         cpeVendor: 'crestron',
-        cpeProduct: 'crestron'
-    },
-
-    // Microsoft Operating Systems
-    {
-        id: 'windows-10',
-        name: 'Windows 10',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_OS,
-        keywords: ['windows 10', 'win10'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_10'
-    },
-    {
-        id: 'windows-11',
-        name: 'Windows 11',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_OS,
-        keywords: ['windows 11', 'win11'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_11'
-    },
-
-    // Microsoft Server Products
-    {
-        id: 'windows-server-2012',
-        name: 'Windows Server 2012',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['windows server 2012'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_server_2012'
-    },
-    {
-        id: 'windows-server-2016',
-        name: 'Windows Server 2016',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['windows server 2016'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_server_2016'
-    },
-    {
-        id: 'windows-server-2019',
-        name: 'Windows Server 2019',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['windows server 2019'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_server_2019'
-    },
-    {
-        id: 'windows-server-2022',
-        name: 'Windows Server 2022',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['windows server 2022'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'windows_server_2022'
-    },
-    {
-        id: 'microsoft-exchange',
-        name: 'Microsoft Exchange Server',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['microsoft exchange', 'exchange server'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'exchange_server'
-    },
-    {
-        id: 'microsoft-sharepoint',
-        name: 'Microsoft SharePoint',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_SERVER,
-        keywords: ['microsoft sharepoint', 'sharepoint server'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'sharepoint_server'
-    },
-    {
-        id: 'microsoft-sql-server',
-        name: 'Microsoft SQL Server',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.DATABASE,
-        keywords: ['microsoft sql server', 'mssql'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'sql_server'
-    },
-
-    // Microsoft Applications
-    {
-        id: 'microsoft-office-365',
-        name: 'Microsoft Office 365',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_APPS,
-        keywords: ['office 365', 'microsoft 365', 'm365'],
-        cpeVendor: 'microsoft',
-        cpeProduct: '365_apps'
-    },
-
-    // Microsoft Development Tools
-    {
-        id: 'microsoft-visual-studio',
-        name: 'Microsoft Visual Studio',
-        vendor: 'Microsoft',
-        category: ASSET_CATEGORIES.MICROSOFT_DEV,
-        keywords: ['visual studio', 'vs2019', 'vs2022'],
-        cpeVendor: 'microsoft',
-        cpeProduct: 'visual_studio'
+        cpeProducts: ['crestron', 'dm', 'nvx', 'flex'],
+        keywords: ['crestron', 'crestron av', 'crestron control']
     }
 ];
 
@@ -400,6 +433,131 @@ export const getAssetById = (id) => {
 export const getAssetKeywords = (assetId) => {
     const asset = getAssetById(assetId);
     return asset ? asset.keywords : [];
+};
+
+// ============================================
+// Vendor Grouping Helper Functions
+// ============================================
+
+// Get list of unique vendor groups that have assets
+export const getVendorGroups = () => {
+    const vendorGroups = [...new Set(ASSETS.map(asset => asset.vendorGroup))];
+    return vendorGroups.filter(Boolean).sort();
+};
+
+// Get assets by vendor group
+export const getAssetsByVendorGroup = (vendorGroup) => {
+    if (!vendorGroup || vendorGroup === 'All') {
+        return ASSETS;
+    }
+    return ASSETS.filter(asset => asset.vendorGroup === vendorGroup);
+};
+
+// Get subcategories for a vendor (based on asset categories within that vendor group)
+export const getSubcategoriesForVendor = (vendorGroup) => {
+    const vendorAssets = getAssetsByVendorGroup(vendorGroup);
+    const subcategories = [...new Set(vendorAssets.map(asset => asset.category))];
+    return subcategories.filter(Boolean).sort();
+};
+
+// Get assets by vendor and subcategory (category within a vendor group)
+export const getAssetsByVendorAndSubcategory = (vendorGroup, subcategory) => {
+    return ASSETS.filter(asset =>
+        asset.vendorGroup === vendorGroup && asset.category === subcategory
+    );
+};
+
+// Get vulnerability counts for a vendor group
+export const getVendorVulnCounts = (vendorGroup, vulnCounts) => {
+    const vendorAssets = getAssetsByVendorGroup(vendorGroup);
+    let total = 0;
+    let critical = 0;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+
+    vendorAssets.forEach(asset => {
+        const counts = vulnCounts[asset.id];
+        if (counts) {
+            total += counts.total || 0;
+            critical += counts.critical || 0;
+            high += counts.high || 0;
+            medium += counts.medium || 0;
+            low += counts.low || 0;
+        }
+    });
+
+    return { total, critical, high, medium, low };
+};
+
+// Get vulnerability counts for a subcategory within a vendor
+export const getSubcategoryVulnCounts = (vendorGroup, subcategory, vulnCounts) => {
+    const assets = getAssetsByVendorAndSubcategory(vendorGroup, subcategory);
+    let total = 0;
+    let critical = 0;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+
+    assets.forEach(asset => {
+        const counts = vulnCounts[asset.id];
+        if (counts) {
+            total += counts.total || 0;
+            critical += counts.critical || 0;
+            high += counts.high || 0;
+            medium += counts.medium || 0;
+            low += counts.low || 0;
+        }
+    });
+
+    return { total, critical, high, medium, low };
+};
+
+// Get sub-products for an asset (for drill-down view)
+export const getSubProductsForAsset = (assetId) => {
+    const asset = getAssetById(assetId);
+    return asset?.subProducts || [];
+};
+
+// Get sub-products grouped by their group property
+export const getGroupedSubProducts = (assetId) => {
+    const subProducts = getSubProductsForAsset(assetId);
+    const groups = {};
+
+    subProducts.forEach(subProduct => {
+        const groupName = subProduct.group || 'Other';
+        if (!groups[groupName]) {
+            groups[groupName] = [];
+        }
+        groups[groupName].push(subProduct);
+    });
+
+    return groups;
+};
+
+// Helper to match a vulnerability to specific sub-products within a vendor
+export const matchVulnToSubProducts = (vuln, asset) => {
+    if (!asset?.subProducts) return [];
+
+    const desc = vuln.description?.toLowerCase() || '';
+    const cpes = vuln.affectedProducts?.map(p => p.cpe?.toLowerCase() || '') || [];
+
+    const matchedSubProducts = [];
+
+    asset.subProducts.forEach(subProduct => {
+        // Check if the vulnerability description or CPEs mention this sub-product
+        const subProductTerms = subProduct.name.toLowerCase().split(' ');
+        const matchesDesc = subProductTerms.some(term => term.length > 3 && desc.includes(term));
+        const matchesCPE = cpes.some(cpe =>
+            subProductTerms.some(term => term.length > 3 && cpe.includes(term))
+        );
+
+        if (matchesDesc || matchesCPE) {
+            matchedSubProducts.push(subProduct);
+        }
+    });
+
+    return matchedSubProducts;
 };
 
 export default ASSETS;

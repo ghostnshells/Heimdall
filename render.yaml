@@ -1,0 +1,17 @@
+# Render.com deployment configuration
+# Deploy backend as a Web Service
+
+services:
+  - type: web
+    name: heimdall-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NVD_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: CORS_ORIGIN
+        sync: false  # Set to your Hostinger domain

@@ -1,1 +1,29 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+
+# Cache and logs
+*.log
+npm-debug.log*
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Vulnerability cache (contains fetched data)
+server/cache/
+*.cache.json

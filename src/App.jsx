@@ -1,0 +1,206 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import Sidebar from './components/Sidebar/Sidebar';
+import Dashboard from './components/Dashboard/Dashboard';
+import AlertsList from './components/AlertsList/AlertsList';
+import NewsFeed from './components/NewsFeed';
+import {
+    fetchAllVulnerabilities,
+    getVulnerabilityStats,
+    getVulnCountsByAsset,
+    clearCache
+} from './services/vulnerabilityService';
+
+function App() {
+    // State
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [timeRange, setTimeRange] = useState('30d');
+    const [vulnerabilities, setVulnerabilities] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [vulnCounts, setVulnCounts] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(null);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Collapse states for responsive layout
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isNewsFeedCollapsed, setIsNewsFeedCollapsed] = useState(true); // Collapsed by default
+
+    // Vendor view mode state
+    const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
+    const [selectedVendor, setSelectedVendor] = useState(null);
+    const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+
+    // Handle view mode change
+    const handleViewModeChange = (mode) => {
+        setViewMode(mode);
+        // Reset selections when switching modes
+        if (mode === 'category') {
+            setSelectedVendor(null);
+            setSelectedSubcategory(null);
+        } else {
+            setSelectedCategory('All');
+        }
+    };
+
+    // Handle vendor selection
+    const handleVendorSelect = (vendor) => {
+        setSelectedVendor(vendor);
+        setSelectedSubcategory(null); // Reset subcategory when vendor changes
+    };
+
+    // Handle subcategory selection
+    const handleSubcategorySelect = (subcat) => {
+        setSelectedSubcategory(subcat);
+    };
+
+    // Fetch vulnerabilities from live NVD API
+    const fetchData = useCallback(async (forceRefresh = false) => {
+        setIsLoading(true);
+        setError(null);
+        setLoadingProgress({ current: 0, total: 24, asset: 'Initializing connection to NVD...' });
+
+        try {
+            const data = await fetchAllVulnerabilities(
+                timeRange,
+                (current, total, assetName) => {
+                    setLoadingProgress({ current: current + 1, total, asset: assetName });
+                },
+                forceRefresh
+            );
+
+            setVulnerabilities(data);
+            setStats(getVulnerabilityStats(data));
+            setVulnCounts(getVulnCountsByAsset(data));
+        } catch (err) {
+            console.error('Error fetching vulnerabilities:', err);
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+            setLoadingProgress(null);
+        }
+    }, [timeRange]);
+
+    // Initial fetch
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Handle time range change
+    // Note: We don't clear cache here - the service will use cached data from larger
+    // time ranges when available, and only fetch from API when necessary
+    const handleTimeRangeChange = (newRange) => {
+        setTimeRange(newRange);
+    };
+
+    // Handle refresh
+    const handleRefresh = () => {
+        clearCache();
+        fetchData(true);
+    };
+
+    // Handle asset click
+    const handleAssetClick = (asset) => {
+        setSelectedAsset(asset);
+        setIsPanelOpen(true);
+    };
+
+    // Close panel
+    const handleClosePanel = () => {
+        setIsPanelOpen(false);
+        setTimeout(() => setSelectedAsset(null), 300);
+    };
+
+    // Get vulnerabilities for selected asset
+    const getSelectedAssetVulns = () => {
+        if (!selectedAsset || !vulnerabilities?.byAsset) return [];
+        return vulnerabilities.byAsset[selectedAsset.id] || [];
+    };
+
+    return (
+        <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isNewsFeedCollapsed ? 'news-collapsed' : ''}`}>
+            <Sidebar
+                selectedCategory={selectedCategory}
+                onCategorySelect={setSelectedCategory}
+                vulnCounts={vulnCounts}
+                lastUpdated={vulnerabilities?.fetchedAt}
+                onRefresh={handleRefresh}
+                isLoading={isLoading}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                viewMode={viewMode}
+                onViewModeChange={handleViewModeChange}
+                selectedVendor={selectedVendor}
+                onVendorSelect={handleVendorSelect}
+                selectedSubcategory={selectedSubcategory}
+                onSubcategorySelect={handleSubcategorySelect}
+            />
+
+            <main className="main-content">
+                <Dashboard
+                    selectedCategory={selectedCategory}
+                    timeRange={timeRange}
+                    onTimeRangeChange={handleTimeRangeChange}
+                    vulnerabilities={vulnerabilities}
+                    vulnCounts={vulnCounts}
+                    stats={stats}
+                    isLoading={isLoading}
+                    loadingProgress={loadingProgress}
+                    onAssetClick={handleAssetClick}
+                    selectedAsset={selectedAsset}
+                    viewMode={viewMode}
+                    selectedVendor={selectedVendor}
+                    selectedSubcategory={selectedSubcategory}
+                />
+
+                <aside className={`news-panel ${isNewsFeedCollapsed ? 'collapsed' : ''}`}>
+                    <NewsFeed
+                        isCollapsed={isNewsFeedCollapsed}
+                        onToggleCollapse={() => setIsNewsFeedCollapsed(!isNewsFeedCollapsed)}
+                    />
+                </aside>
+            </main>
+
+            <AlertsList
+                asset={selectedAsset}
+                vulnerabilities={getSelectedAssetVulns()}
+                isOpen={isPanelOpen}
+                onClose={handleClosePanel}
+            />
+
+            {error && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    background: 'var(--severity-critical-bg)',
+                    border: '1px solid var(--severity-critical)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: 'var(--space-4)',
+                    color: 'var(--severity-critical)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-3)',
+                    zIndex: 1000,
+                    maxWidth: '400px'
+                }}>
+                    <span>Error: {error}</span>
+                    <button
+                        onClick={() => setError(null)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'inherit',
+                            cursor: 'pointer',
+                            fontSize: '20px',
+                            flexShrink: 0
+                        }}
+                    >×</button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default App;

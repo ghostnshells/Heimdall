@@ -1,8 +1,14 @@
 import React from 'react';
-import { Shield, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle2, Building2 } from 'lucide-react';
 import AssetCard, { AssetCardSkeleton } from './AssetCard';
 import TimeRangeToggle from '../TimeRangeToggle/TimeRangeToggle';
-import { ASSETS, getAssetsByCategory } from '../../data/assets';
+import {
+    ASSETS,
+    getAssetsByCategory,
+    getAssetsByVendorGroup,
+    getAssetsByVendorAndSubcategory,
+    getSubcategoriesForVendor
+} from '../../data/assets';
 import './Dashboard.css';
 
 const Dashboard = ({
@@ -15,19 +21,69 @@ const Dashboard = ({
     isLoading,
     loadingProgress,
     onAssetClick,
-    selectedAsset
+    selectedAsset,
+    viewMode = 'category',
+    selectedVendor,
+    selectedSubcategory
 }) => {
-    // Get assets for current category
-    const assets = selectedCategory === 'All'
-        ? ASSETS
-        : getAssetsByCategory(selectedCategory);
+    // Get assets based on view mode
+    const getFilteredAssets = () => {
+        if (viewMode === 'vendor') {
+            if (selectedSubcategory && selectedVendor) {
+                return getAssetsByVendorAndSubcategory(selectedVendor, selectedSubcategory);
+            }
+            if (selectedVendor) {
+                return getAssetsByVendorGroup(selectedVendor);
+            }
+            return ASSETS;
+        }
+        // Category view (default)
+        return selectedCategory === 'All'
+            ? ASSETS
+            : getAssetsByCategory(selectedCategory);
+    };
+
+    const assets = getFilteredAssets();
+
+    // Get title based on view mode and selection
+    const getTitle = () => {
+        if (viewMode === 'vendor') {
+            if (selectedSubcategory && selectedVendor) {
+                return `${selectedVendor} - ${selectedSubcategory}`;
+            }
+            if (selectedVendor) {
+                return selectedVendor;
+            }
+            return 'All Vendors';
+        }
+        return selectedCategory === 'All' ? 'Security Dashboard' : selectedCategory;
+    };
+
+    // Group assets by subcategory when viewing a vendor (for better organization)
+    const getGroupedAssets = () => {
+        if (viewMode === 'vendor' && selectedVendor && !selectedSubcategory) {
+            const subcategories = getSubcategoriesForVendor(selectedVendor);
+            if (subcategories.length > 1) {
+                return subcategories.map(subcat => ({
+                    name: subcat,
+                    assets: getAssetsByVendorAndSubcategory(selectedVendor, subcat)
+                }));
+            }
+        }
+        return null;
+    };
+
+    const groupedAssets = getGroupedAssets();
 
     return (
         <main className="dashboard">
             <header className="dashboard-header">
                 <div>
                     <h1 className="dashboard-title">
-                        {selectedCategory === 'All' ? 'Security Dashboard' : selectedCategory}
+                        {viewMode === 'vendor' && selectedVendor && (
+                            <Building2 className="title-icon" />
+                        )}
+                        {getTitle()}
                     </h1>
                     <p className="dashboard-subtitle">
                         Monitoring {assets.length} assets for vulnerabilities
@@ -83,35 +139,64 @@ const Dashboard = ({
             {/* Assets Grid */}
             {!isLoading && (
                 <section className="assets-section">
-                    <div className="section-header">
-                        <h2 className="section-title">
-                            <Shield />
-                            Monitored Assets
-                        </h2>
-                    </div>
-
-                    {assets.length === 0 ? (
-                        <div className="empty-state">
-                            <div className="empty-state-icon">
-                                <AlertTriangle />
-                            </div>
-                            <h3 className="empty-state-title">No assets found</h3>
-                            <p className="empty-state-text">
-                                There are no assets in this category.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="assets-grid">
-                            {assets.map(asset => (
-                                <AssetCard
-                                    key={asset.id}
-                                    asset={asset}
-                                    vulnCounts={vulnCounts?.[asset.id] || {}}
-                                    onClick={onAssetClick}
-                                    isSelected={selectedAsset?.id === asset.id}
-                                />
+                    {/* Grouped by subcategory (vendor view with vendor selected) */}
+                    {groupedAssets ? (
+                        <>
+                            {groupedAssets.map(group => (
+                                <div key={group.name} className="asset-group">
+                                    <div className="section-header">
+                                        <h2 className="section-title subcategory-title">
+                                            {group.name}
+                                            <span className="asset-count">({group.assets.length})</span>
+                                        </h2>
+                                    </div>
+                                    <div className="assets-grid">
+                                        {group.assets.map(asset => (
+                                            <AssetCard
+                                                key={asset.id}
+                                                asset={asset}
+                                                vulnCounts={vulnCounts?.[asset.id] || {}}
+                                                onClick={onAssetClick}
+                                                isSelected={selectedAsset?.id === asset.id}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
-                        </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="section-header">
+                                <h2 className="section-title">
+                                    <Shield />
+                                    Monitored Assets
+                                </h2>
+                            </div>
+
+                            {assets.length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">
+                                        <AlertTriangle />
+                                    </div>
+                                    <h3 className="empty-state-title">No assets found</h3>
+                                    <p className="empty-state-text">
+                                        There are no assets in this {viewMode === 'vendor' ? 'vendor group' : 'category'}.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="assets-grid">
+                                    {assets.map(asset => (
+                                        <AssetCard
+                                            key={asset.id}
+                                            asset={asset}
+                                            vulnCounts={vulnCounts?.[asset.id] || {}}
+                                            onClick={onAssetClick}
+                                            isSelected={selectedAsset?.id === asset.id}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
                 </section>
             )}
