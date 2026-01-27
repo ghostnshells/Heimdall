@@ -42,7 +42,7 @@ export const ASSET_CATEGORIES = {
 export const ASSETS = [
     // ==========================================
     // CISCO - Consolidated vendor card
-    // Monitors: IOS, IOS XE, ISE, Catalyst switches, Nexus, Wireless LAN Controllers
+    // Monitors: IOS, IOS XE, IOS XR, ISE, Unified CM (software only - hardware rarely has CVEs)
     // ==========================================
     {
         id: 'cisco',
@@ -50,34 +50,31 @@ export const ASSETS = [
         vendor: 'Cisco',
         category: ASSET_CATEGORIES.NETWORK,
         vendorGroup: VENDOR_GROUPS.CISCO,
-        description: 'Cisco networking infrastructure including IOS, switches, and wireless controllers',
+        description: 'Cisco networking software including IOS, IOS XE, IOS XR, ISE, and Unified CM',
         // Primary CPE vendor for searching
         cpeVendor: 'cisco',
-        // Multiple CPE products to search for
+        // Multiple CPE products to search for (software only)
         cpeProducts: [
             'ios',
             'ios_xe',
             'ios_xr',
             'identity_services_engine',
-            'catalyst',
-            'nexus',
-            'wireless_lan_controller',
-            'aironet',
-            'meraki'
+            'unified_communications_manager'
         ],
         // Keywords for keyword-based searching
+        // First keyword is used for the primary search - using 'cisco' to catch all Cisco vulns
+        // including those without CPE data yet (like newly published ISE/UCM vulns)
+        // Validators filter out false positives (like Apple iOS)
         keywords: [
+            'cisco',
             'cisco ios',
             'cisco ios xe',
             'cisco ios xr',
             'cisco ise',
             'cisco identity services engine',
-            'cisco catalyst',
-            'cisco nexus',
-            'cisco wireless lan controller',
-            'cisco wlc',
-            'cisco aironet',
-            'cisco meraki'
+            'cisco unified communications manager',
+            'cisco unified cm',
+            'cisco cucm'
         ],
         // Sub-products for display and filtering within the vendor card
         subProducts: [
@@ -85,14 +82,7 @@ export const ASSETS = [
             { id: 'ios-xe', name: 'Cisco IOS XE', type: 'Software' },
             { id: 'ios-xr', name: 'Cisco IOS XR', type: 'Software' },
             { id: 'ise', name: 'Cisco ISE', type: 'Software' },
-            { id: 'catalyst-9500', name: 'Catalyst 9500', type: 'Switch' },
-            { id: 'catalyst-9300', name: 'Catalyst 9300', type: 'Switch' },
-            { id: 'catalyst-3750', name: 'Catalyst 3750', type: 'Switch' },
-            { id: 'catalyst-3650', name: 'Catalyst 3650', type: 'Switch' },
-            { id: 'nexus-9000', name: 'Nexus 9000 Series', type: 'Switch' },
-            { id: 'wlc', name: 'Wireless LAN Controller', type: 'Controller' },
-            { id: 'aironet', name: 'Aironet Access Points', type: 'Wireless' },
-            { id: 'meraki', name: 'Meraki', type: 'Cloud Managed' }
+            { id: 'ucm', name: 'Cisco Unified CM', type: 'Software' }
         ]
     },
 

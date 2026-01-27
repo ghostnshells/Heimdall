@@ -5,7 +5,7 @@
 export const ASSETS = [
     // ==========================================
     // CISCO - Consolidated vendor card
-    // Monitors: IOS, IOS XE, ISE, Catalyst switches, Nexus, Wireless LAN Controllers
+    // Monitors: IOS, IOS XE, IOS XR, ISE, Unified CM (software only - hardware rarely has CVEs)
     // ==========================================
     {
         id: 'cisco',
@@ -17,24 +17,20 @@ export const ASSETS = [
             'ios_xe',
             'ios_xr',
             'identity_services_engine',
-            'catalyst',
-            'nexus',
-            'wireless_lan_controller',
-            'aironet',
-            'meraki'
+            'unified_communications_manager'
         ],
+        // First keyword is used for primary search - 'cisco' catches all Cisco vulns
+        // including those without CPE data yet; validators filter out false positives
         keywords: [
+            'cisco',
             'cisco ios',
             'cisco ios xe',
             'cisco ios xr',
             'cisco ise',
             'cisco identity services engine',
-            'cisco catalyst',
-            'cisco nexus',
-            'cisco wireless lan controller',
-            'cisco wlc',
-            'cisco aironet',
-            'cisco meraki'
+            'cisco unified communications manager',
+            'cisco unified cm',
+            'cisco cucm'
         ]
     },
 

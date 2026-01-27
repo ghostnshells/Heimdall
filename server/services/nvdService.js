@@ -270,15 +270,16 @@ function sortByMostRecentDate(vulnerabilities) {
 }
 
 /**
- * Validate that a vulnerability's dates fall within the requested time range
+ * Validate that a vulnerability's published date falls within the requested time range
+ * NOTE: Only checking published date - NVD's lastModified reflects when NVD touched the
+ * record (even for minor metadata changes), not when the vulnerability was meaningfully
+ * updated. Using lastModified caused old CVEs to appear with misleading dates.
  */
 function isWithinDateRange(vuln, startDate, endDate) {
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
     const published = vuln.published ? new Date(vuln.published).getTime() : 0;
-    const lastModified = vuln.lastModified ? new Date(vuln.lastModified).getTime() : 0;
-    return (published >= startTime && published <= endTime) ||
-           (lastModified >= startTime && lastModified <= endTime);
+    return published >= startTime && published <= endTime;
 }
 
 /**
@@ -390,8 +391,8 @@ async function searchCISAForAsset(asset, startDate, endDate) {
  */
 const PRODUCT_VALIDATORS = {
     // ==========================================
-    // CISCO - Consolidated validator for all Cisco products
-    // Monitors: IOS, IOS XE, ISE, Catalyst, Nexus, Wireless LAN Controllers
+    // CISCO - Consolidated validator for Cisco software products
+    // Monitors: IOS, IOS XE, IOS XR, ISE, Unified CM (software only - hardware rarely has CVEs)
     // ==========================================
     'cisco': (vuln) => {
         const desc = vuln.description?.toLowerCase() || '';
@@ -401,17 +402,15 @@ const PRODUCT_VALIDATORS = {
             p.cpe?.includes(':cisco:')
         );
 
-        // Description must mention Cisco context
+        // Description must mention Cisco software context
         const descHasCiscoContext =
             desc.includes('cisco') ||
             desc.includes('ios-xe') ||
             desc.includes('ios-xr') ||
-            desc.includes('catalyst') ||
-            desc.includes('nexus') ||
-            desc.includes('wireless lan controller') ||
             desc.includes('identity services engine') ||
-            desc.includes('meraki') ||
-            desc.includes('aironet');
+            desc.includes('unified communications manager') ||
+            desc.includes('unified cm') ||
+            desc.includes('cucm');
 
         // Exclude Apple iOS (common false positive)
         const isAppleIOS =
@@ -829,44 +828,36 @@ async function searchNVDByCPELastModified(vendor, product, startDate, endDate, r
 async function fetchVulnerabilitiesForAsset(asset, startDate, endDate) {
     const results = [];
 
-    // Keyword search first if preferred
+    // Keyword search only if preferred (e.g., Veeam where CPE matching is unreliable)
     if (asset.preferKeywordSearch && asset.keywords?.length > 0) {
         const keyword = asset.keywords[0];
-        // Search by published date
         const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate);
         results.push(...keywordResults);
-        // Also search by lastModified date to catch updated CVEs
-        const keywordModResults = await searchNVDByKeywordLastModified(keyword, startDate, endDate);
-        results.push(...keywordModResults);
     }
-    // CPE-based search
-    else if (asset.cpeVendor) {
-        // Get list of CPE products (supports both old and new format)
-        const cpeProducts = asset.cpeProducts || (asset.cpeProduct ? [asset.cpeProduct] : []);
+    // For most assets: search BOTH by CPE AND by keywords to ensure complete coverage
+    // CPE search is accurate but misses newly published CVEs that don't have CPE data yet
+    // Keyword search catches those CVEs but may have more false positives (filtered later)
+    else {
+        // CPE-based search (accurate for CVEs with CPE data)
+        if (asset.cpeVendor) {
+            const cpeProducts = asset.cpeProducts || (asset.cpeProduct ? [asset.cpeProduct] : []);
+            const cpeVendors = [asset.cpeVendor, ...(asset.additionalCpeVendors || [])];
 
-        // Get list of CPE vendors (supports additional vendors like HPE)
-        const cpeVendors = [asset.cpeVendor, ...(asset.additionalCpeVendors || [])];
-
-        // Search all CPE vendor/product combinations
-        for (const vendor of cpeVendors) {
-            for (const product of cpeProducts) {
-                // Search by published date
-                const cpeResults = await searchNVDByCPE(vendor, product, startDate, endDate);
-                results.push(...cpeResults);
-                // Also search by lastModified date to catch updated CVEs
-                const cpeModResults = await searchNVDByCPELastModified(vendor, product, startDate, endDate);
-                results.push(...cpeModResults);
+            for (const vendor of cpeVendors) {
+                for (const product of cpeProducts) {
+                    const cpeResults = await searchNVDByCPE(vendor, product, startDate, endDate);
+                    results.push(...cpeResults);
+                }
             }
         }
-    }
 
-    // Keyword search fallback
-    if (results.length === 0 && asset.keywords?.length > 0 && !asset.preferKeywordSearch) {
-        const keyword = asset.keywords[0];
-        const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate);
-        results.push(...keywordResults);
-        const keywordModResults = await searchNVDByKeywordLastModified(keyword, startDate, endDate);
-        results.push(...keywordModResults);
+        // ALSO search by keywords to catch CVEs without CPE data yet
+        // NVD often publishes CVEs before adding CPE entries, especially for new vulns
+        if (asset.keywords?.length > 0) {
+            const keyword = asset.keywords[0];
+            const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate);
+            results.push(...keywordResults);
+        }
     }
 
     // Deduplicate (keep recentlyModified version if available)
@@ -948,8 +939,11 @@ export async function fetchAllVulnerabilities(timeRange = '7d') {
             const cisaOnly = cisaVulns.filter(v => !nvdIds.has(v.id));
             merged.push(...cisaOnly);
 
-            vulnerabilities[asset.id] = merged;
-            allVulns.push(...merged);
+            // Sort per-asset vulnerabilities by most recent date (published or lastModified)
+            const sortedMerged = sortByMostRecentDate(merged);
+
+            vulnerabilities[asset.id] = sortedMerged;
+            allVulns.push(...sortedMerged);
 
             console.log(`  Found ${merged.length} vulnerabilities`);
         } catch (error) {

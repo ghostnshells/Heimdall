@@ -787,7 +787,7 @@ Solution:
 - Added comprehensive console logging for debugging rate limiting and filtering
 - No breaking changes to existing API interfaces
 
-### Testing Recommendations:
+### Testing:
 
 1. Clear browser cache and localStorage before testing
 2. Test with and without NVD_API_KEY environment variable
@@ -796,3 +796,26 @@ Solution:
 5. Verify no securityfocus.com or securitytracker.com links appear in references
 6. Verify vulnerabilities are sorted with most recent (published/modified) first
 
+--------------------------------------------------------
+UPDATE 23JAN2026 A
+--------------------------------------------------------
+When a user clicks on an asset card, there should be sections for each asset product/software being monitored. For
+example, when a user clicks on Cisco, they should see the vulnerability cards for Cisco IOS under a Cisco IOS and Cisco
+IOS XR under a Cisco Software heading.
+
+Because there are rarely any Cisco hardware vulnerabilities, stop monitoring for the hardware assets.
+
+The order in which the CVEs appear is also wrong for Cisco and some other assets. For example, Cisco has a Published vulnerability for
+CVE-2026-20045 Published on Jan 21 2026 and Last Modified on Jan 21 2026 but appears at the very bottom when it should appear at the top.
+
+This needs to be investigasted for all assets to ensure proper handling.
+
+----------------------------------------------------------
+UPDATE 23JAN2026 B
+----------------------------------------------------------
+The CVEs for Cisco might not be pulling the most up to date information. The Modified date for many of the CVEs is not correct, for example
+when going to CVE-2018-0180 it says the Modified date is Jan 15, 2026 but when you click on the sources, it was last updated Dec 15, 2022. This
+is the case for multiple vulnerabilities in the Cisco asset.
+
+This is probably happening with other assets too and needs to be corrected. We can't be displaying information with a Last Modified date that is
+not accurate.

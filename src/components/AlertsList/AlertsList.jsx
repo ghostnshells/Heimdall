@@ -1,10 +1,80 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers } from 'lucide-react';
+import { matchVulnToSubProducts } from '../../data/assets';
 import './AlertsList.css';
 
 const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
     const [expandedId, setExpandedId] = useState(null);
     const [expandedSections, setExpandedSections] = useState({});
+    const [expandedProductSections, setExpandedProductSections] = useState({});
+
+    // Group vulnerabilities by sub-product type (e.g., "Software", "Switch", "Storage")
+    const groupedVulnerabilities = useMemo(() => {
+        if (!asset?.subProducts || asset.subProducts.length === 0) {
+            return null; // No grouping needed
+        }
+
+        const groups = {};
+        const ungrouped = [];
+
+        vulnerabilities.forEach(vuln => {
+            const matchedSubProducts = matchVulnToSubProducts(vuln, asset);
+
+            if (matchedSubProducts.length > 0) {
+                // Group by the type of the first matched sub-product
+                matchedSubProducts.forEach(subProduct => {
+                    const groupKey = subProduct.type || 'Other';
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = {
+                            type: groupKey,
+                            vulnerabilities: [],
+                            subProductNames: new Set()
+                        };
+                    }
+                    // Avoid duplicates within same group
+                    if (!groups[groupKey].vulnerabilities.some(v => v.id === vuln.id)) {
+                        groups[groupKey].vulnerabilities.push(vuln);
+                    }
+                    groups[groupKey].subProductNames.add(subProduct.name);
+                });
+            } else {
+                // Couldn't match to any sub-product
+                ungrouped.push(vuln);
+            }
+        });
+
+        // Convert to array and sort by type
+        const sortedGroups = Object.values(groups)
+            .map(g => ({
+                ...g,
+                subProductNames: Array.from(g.subProductNames)
+            }))
+            .sort((a, b) => {
+                // Software first, then alphabetically
+                if (a.type === 'Software') return -1;
+                if (b.type === 'Software') return 1;
+                return a.type.localeCompare(b.type);
+            });
+
+        // Add ungrouped if any
+        if (ungrouped.length > 0) {
+            sortedGroups.push({
+                type: 'Other',
+                vulnerabilities: ungrouped,
+                subProductNames: []
+            });
+        }
+
+        return sortedGroups.length > 0 ? sortedGroups : null;
+    }, [vulnerabilities, asset]);
+
+    const toggleProductSection = (sectionType, e) => {
+        e?.stopPropagation();
+        setExpandedProductSections(prev => ({
+            ...prev,
+            [sectionType]: !prev[sectionType]
+        }));
+    };
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Unknown';
@@ -273,6 +343,295 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
         };
     };
 
+    // Helper function to render a vulnerability card (used by both grouped and flat views)
+    const renderVulnerabilityCard = (vuln, refs, hasExploits, hasRemediation, dueDateUrgency, pocSummary, remediationSummary, allRefs) => (
+        <div
+            key={vuln.id}
+            className={`alert-item ${expandedId === vuln.id ? 'expanded' : ''}`}
+            onClick={() => toggleExpand(vuln.id)}
+        >
+            <div className="alert-item-header">
+                <div className="alert-item-header-left">
+                    <span className="alert-item-id">{vuln.id}</span>
+                    {vuln.activelyExploited && (
+                        <span className="actively-exploited-badge">
+                            <AlertTriangle size={12} />
+                            Actively Exploited
+                        </span>
+                    )}
+                </div>
+                <div className="alert-item-score">
+                    {vuln.cvssScore && (
+                        <span className={`alert-item-cvss ${getSeverityClass(vuln.severity)}`}>
+                            CVSS {vuln.cvssScore.toFixed(1)}
+                        </span>
+                    )}
+                    <span className={`badge badge-${getSeverityClass(vuln.severity)}`}>
+                        {vuln.severity || 'Unknown'}
+                    </span>
+                </div>
+            </div>
+
+            <p className="alert-item-description">
+                {vuln.description}
+            </p>
+
+            <div className="alert-item-meta">
+                <span className="alert-item-meta-item">
+                    <Calendar />
+                    Published: {formatDate(vuln.published)}
+                </span>
+                <span className="alert-item-meta-item">
+                    <Clock />
+                    NVD Updated: {formatDate(vuln.lastModified)}
+                </span>
+            </div>
+
+            {expandedId === vuln.id && (
+                <>
+                    {/* Proof of Concept Section */}
+                    {hasExploits && (
+                        <div className="alert-section poc-section">
+                            <div
+                                className="alert-section-header"
+                                onClick={(e) => toggleSection(vuln.id, 'poc', e)}
+                            >
+                                <div className="alert-section-title">
+                                    {expandedSections[`${vuln.id}-poc`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <Code size={14} />
+                                    Proof of Concept
+                                    <span className="alert-section-count">{refs.exploits.length}</span>
+                                </div>
+                            </div>
+                            {expandedSections[`${vuln.id}-poc`] && (
+                                <div className="alert-section-content">
+                                    {pocSummary && (pocSummary.attackVector || pocSummary.details.length > 0) && (
+                                        <div className="summary-box poc-summary">
+                                            <div className="summary-header">
+                                                <Lightbulb size={14} />
+                                                <span>Exploit Analysis</span>
+                                                {pocSummary.riskLevel !== 'unknown' && (
+                                                    <span className={`risk-badge risk-${pocSummary.riskLevel}`}>
+                                                        {pocSummary.riskLevel.toUpperCase()} RISK
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <ul className="summary-list">
+                                                {pocSummary.attackVector && (
+                                                    <li><strong>Attack Vector:</strong> {pocSummary.attackVector}</li>
+                                                )}
+                                                {pocSummary.details.map((detail, idx) => (
+                                                    <li key={idx}>{detail}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    <div className="ref-category">
+                                        <div className="ref-category-title">Exploit Resources</div>
+                                        {refs.exploits.map((ref, idx) => {
+                                            const sourceCtx = getSourceContext(ref.url);
+                                            return (
+                                                <a
+                                                    key={idx}
+                                                    href={ref.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="alert-item-reference poc-link"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <ExternalLink size={10} />
+                                                    <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                    {sourceCtx.label && (
+                                                        <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
+                                                    )}
+                                                </a>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Remediation Guide Section */}
+                    {hasRemediation && (
+                        <div className="alert-section remediation-section">
+                            <div
+                                className="alert-section-header"
+                                onClick={(e) => toggleSection(vuln.id, 'remediation', e)}
+                            >
+                                <div className="alert-section-title">
+                                    {expandedSections[`${vuln.id}-remediation`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <Wrench size={14} />
+                                    Remediation Guide
+                                </div>
+                            </div>
+                            {expandedSections[`${vuln.id}-remediation`] && (
+                                <div className="alert-section-content">
+                                    {remediationSummary.actions.length > 0 && (
+                                        <div className="summary-box remediation-summary">
+                                            <div className="summary-header">
+                                                <Lightbulb size={14} />
+                                                <span>Recommended Actions</span>
+                                            </div>
+                                            <ul className="summary-list actionable">
+                                                {remediationSummary.actions.map((action, idx) => (
+                                                    <li key={idx}>{action}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {vuln.cisaData?.requiredAction && (
+                                        <div className="cisa-action">
+                                            <div className="cisa-action-label">CISA Required Action</div>
+                                            <p className="cisa-action-text">{vuln.cisaData.requiredAction}</p>
+                                        </div>
+                                    )}
+                                    {vuln.cisaData?.dueDate && (
+                                        <div className={`cisa-due-date ${dueDateUrgency}`}>
+                                            <Calendar size={12} />
+                                            <span>Remediation Due: {formatDate(vuln.cisaData.dueDate)}</span>
+                                            {dueDateUrgency === 'overdue' && <span className="urgency-label">OVERDUE</span>}
+                                            {dueDateUrgency === 'urgent' && <span className="urgency-label">URGENT</span>}
+                                        </div>
+                                    )}
+                                    {refs.patches.length > 0 && (
+                                        <div className="ref-category">
+                                            <div className="ref-category-title">Patches</div>
+                                            {refs.patches.map((ref, idx) => {
+                                                const sourceCtx = getSourceContext(ref.url);
+                                                return (
+                                                    <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference patch-link" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                        {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {refs.vendorAdvisories.length > 0 && (
+                                        <div className="ref-category">
+                                            <div className="ref-category-title">Vendor Advisories</div>
+                                            {refs.vendorAdvisories.map((ref, idx) => {
+                                                const sourceCtx = getSourceContext(ref.url);
+                                                return (
+                                                    <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                        {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {refs.mitigations.length > 0 && (
+                                        <div className="ref-category">
+                                            <div className="ref-category-title">Mitigations</div>
+                                            {refs.mitigations.map((ref, idx) => {
+                                                const sourceCtx = getSourceContext(ref.url);
+                                                return (
+                                                    <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                        {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {refs.thirdParty.length > 0 && (
+                                        <div className="ref-category">
+                                            <div className="ref-category-title">Third Party Advisories</div>
+                                            {refs.thirdParty.map((ref, idx) => {
+                                                const sourceCtx = getSourceContext(ref.url);
+                                                return (
+                                                    <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                        {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* All References Section */}
+                    {!hasExploits && !hasRemediation && (allRefs.length > 0 || vuln.id?.startsWith('CVE-')) && (
+                        <div className="alert-section">
+                            <div className="alert-section-header" onClick={(e) => toggleSection(vuln.id, 'refs', e)}>
+                                <div className="alert-section-title">
+                                    {expandedSections[`${vuln.id}-refs`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <Link size={14} />
+                                    References
+                                    <span className="alert-section-count">{allRefs.length || 1}</span>
+                                </div>
+                            </div>
+                            {expandedSections[`${vuln.id}-refs`] && (
+                                <div className="alert-section-content">
+                                    {allRefs.length > 0 ? (
+                                        <>
+                                            {allRefs.slice(0, 10).map((ref, idx) => {
+                                                const sourceCtx = getSourceContext(ref.url);
+                                                return (
+                                                    <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                                        <ExternalLink size={10} />
+                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                        {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                                    </a>
+                                                );
+                                            })}
+                                            {allRefs.length > 10 && <div className="ref-more">+{allRefs.length - 10} more references</div>}
+                                        </>
+                                    ) : (
+                                        <a href={`https://nvd.nist.gov/vuln/detail/${vuln.id}`} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                            <ExternalLink size={10} />
+                                            <span className="ref-source">nvd.nist.gov</span>
+                                            <span className="source-badge source-reference">NVD</span>
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Other References */}
+                    {(hasExploits || hasRemediation) && refs.other.length > 0 && (
+                        <div className="alert-section">
+                            <div className="alert-section-header" onClick={(e) => toggleSection(vuln.id, 'other', e)}>
+                                <div className="alert-section-title">
+                                    {expandedSections[`${vuln.id}-other`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <FileText size={14} />
+                                    Additional References
+                                    <span className="alert-section-count">{refs.other.length}</span>
+                                </div>
+                            </div>
+                            {expandedSections[`${vuln.id}-other`] && (
+                                <div className="alert-section-content">
+                                    {refs.other.slice(0, 10).map((ref, idx) => {
+                                        const sourceCtx = getSourceContext(ref.url);
+                                        return (
+                                            <a key={idx} href={ref.url} target="_blank" rel="noopener noreferrer" className="alert-item-reference" onClick={(e) => e.stopPropagation()}>
+                                                <ExternalLink size={10} />
+                                                <span className="ref-source">{getSourceName(ref.url)}</span>
+                                                {sourceCtx.label && <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>}
+                                            </a>
+                                        );
+                                    })}
+                                    {refs.other.length > 10 && <div className="ref-more">+{refs.other.length - 10} more references</div>}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+
     return (
         <>
             <div
@@ -301,7 +660,46 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
                                 No known vulnerabilities found for this asset in the selected time range.
                             </p>
                         </div>
+                    ) : groupedVulnerabilities ? (
+                        /* Grouped display by product/software type */
+                        groupedVulnerabilities.map(group => (
+                            <div key={group.type} className="product-section">
+                                <div
+                                    className="product-section-header"
+                                    onClick={(e) => toggleProductSection(group.type, e)}
+                                >
+                                    <div className="product-section-title">
+                                        {expandedProductSections[group.type] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                        <Layers size={16} />
+                                        <span>{group.type}</span>
+                                        <span className="product-section-count">{group.vulnerabilities.length}</span>
+                                    </div>
+                                    {group.subProductNames.length > 0 && (
+                                        <div className="product-section-subtitle">
+                                            {group.subProductNames.slice(0, 3).join(', ')}
+                                            {group.subProductNames.length > 3 && ` +${group.subProductNames.length - 3} more`}
+                                        </div>
+                                    )}
+                                </div>
+                                {expandedProductSections[group.type] && (
+                                    <div className="product-section-content">
+                                        {group.vulnerabilities.map(vuln => {
+                                            const refs = categorizeReferences(vuln.references);
+                                            const hasExploits = refs.exploits.length > 0;
+                                            const hasRemediation = refs.patches.length > 0 || refs.vendorAdvisories.length > 0 || refs.mitigations.length > 0 || refs.thirdParty.length > 0 || vuln.cisaData;
+                                            const dueDateUrgency = getDueDateUrgency(vuln.cisaData?.dueDate);
+                                            const pocSummary = hasExploits ? generatePocSummary(vuln, refs) : null;
+                                            const remediationSummary = generateRemediationSummary(vuln, refs);
+                                            const allRefs = getAllReferences(refs);
+
+                                            return renderVulnerabilityCard(vuln, refs, hasExploits, hasRemediation, dueDateUrgency, pocSummary, remediationSummary, allRefs);
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        ))
                     ) : (
+                        /* Flat list display (no sub-products) */
                         vulnerabilities.map(vuln => {
                             const refs = categorizeReferences(vuln.references);
                             const hasExploits = refs.exploits.length > 0;
@@ -311,380 +709,7 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
                             const remediationSummary = generateRemediationSummary(vuln, refs);
                             const allRefs = getAllReferences(refs);
 
-                            return (
-                                <div
-                                    key={vuln.id}
-                                    className={`alert-item ${expandedId === vuln.id ? 'expanded' : ''}`}
-                                    onClick={() => toggleExpand(vuln.id)}
-                                >
-                                    <div className="alert-item-header">
-                                        <div className="alert-item-header-left">
-                                            <span className="alert-item-id">{vuln.id}</span>
-                                            {vuln.activelyExploited && (
-                                                <span className="actively-exploited-badge">
-                                                    <AlertTriangle size={12} />
-                                                    Actively Exploited
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="alert-item-score">
-                                            {vuln.cvssScore && (
-                                                <span className={`alert-item-cvss ${getSeverityClass(vuln.severity)}`}>
-                                                    CVSS {vuln.cvssScore.toFixed(1)}
-                                                </span>
-                                            )}
-                                            <span className={`badge badge-${getSeverityClass(vuln.severity)}`}>
-                                                {vuln.severity || 'Unknown'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <p className="alert-item-description">
-                                        {vuln.description}
-                                    </p>
-
-                                    <div className="alert-item-meta">
-                                        <span className="alert-item-meta-item">
-                                            <Calendar />
-                                            Published: {formatDate(vuln.published)}
-                                        </span>
-                                        <span className="alert-item-meta-item">
-                                            <Clock />
-                                            Modified: {formatDate(vuln.lastModified)}
-                                        </span>
-                                    </div>
-
-                                    {expandedId === vuln.id && (
-                                        <>
-                                            {/* Proof of Concept Section */}
-                                            {hasExploits && (
-                                                <div className="alert-section poc-section">
-                                                    <div
-                                                        className="alert-section-header"
-                                                        onClick={(e) => toggleSection(vuln.id, 'poc', e)}
-                                                    >
-                                                        <div className="alert-section-title">
-                                                            {expandedSections[`${vuln.id}-poc`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                            <Code size={14} />
-                                                            Proof of Concept
-                                                            <span className="alert-section-count">{refs.exploits.length}</span>
-                                                        </div>
-                                                    </div>
-                                                    {expandedSections[`${vuln.id}-poc`] && (
-                                                        <div className="alert-section-content">
-                                                            {/* PoC Summary */}
-                                                            {pocSummary && (pocSummary.attackVector || pocSummary.details.length > 0) && (
-                                                                <div className="summary-box poc-summary">
-                                                                    <div className="summary-header">
-                                                                        <Lightbulb size={14} />
-                                                                        <span>Exploit Analysis</span>
-                                                                        {pocSummary.riskLevel !== 'unknown' && (
-                                                                            <span className={`risk-badge risk-${pocSummary.riskLevel}`}>
-                                                                                {pocSummary.riskLevel.toUpperCase()} RISK
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <ul className="summary-list">
-                                                                        {pocSummary.attackVector && (
-                                                                            <li><strong>Attack Vector:</strong> {pocSummary.attackVector}</li>
-                                                                        )}
-                                                                        {pocSummary.details.map((detail, idx) => (
-                                                                            <li key={idx}>{detail}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Exploit Links */}
-                                                            <div className="ref-category">
-                                                                <div className="ref-category-title">Exploit Resources</div>
-                                                                {refs.exploits.map((ref, idx) => {
-                                                                    const sourceCtx = getSourceContext(ref.url);
-                                                                    return (
-                                                                        <a
-                                                                            key={idx}
-                                                                            href={ref.url}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="alert-item-reference poc-link"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            <ExternalLink size={10} />
-                                                                            <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                            {sourceCtx.label && (
-                                                                                <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                            )}
-                                                                        </a>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Remediation Guide Section */}
-                                            {hasRemediation && (
-                                                <div className="alert-section remediation-section">
-                                                    <div
-                                                        className="alert-section-header"
-                                                        onClick={(e) => toggleSection(vuln.id, 'remediation', e)}
-                                                    >
-                                                        <div className="alert-section-title">
-                                                            {expandedSections[`${vuln.id}-remediation`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                            <Wrench size={14} />
-                                                            Remediation Guide
-                                                        </div>
-                                                    </div>
-                                                    {expandedSections[`${vuln.id}-remediation`] && (
-                                                        <div className="alert-section-content">
-                                                            {/* Remediation Summary */}
-                                                            {remediationSummary.actions.length > 0 && (
-                                                                <div className="summary-box remediation-summary">
-                                                                    <div className="summary-header">
-                                                                        <Lightbulb size={14} />
-                                                                        <span>Recommended Actions</span>
-                                                                    </div>
-                                                                    <ul className="summary-list actionable">
-                                                                        {remediationSummary.actions.map((action, idx) => (
-                                                                            <li key={idx}>{action}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
-
-                                                            {/* CISA Required Action */}
-                                                            {vuln.cisaData?.requiredAction && (
-                                                                <div className="cisa-action">
-                                                                    <div className="cisa-action-label">CISA Required Action</div>
-                                                                    <p className="cisa-action-text">{vuln.cisaData.requiredAction}</p>
-                                                                </div>
-                                                            )}
-
-                                                            {/* CISA Due Date */}
-                                                            {vuln.cisaData?.dueDate && (
-                                                                <div className={`cisa-due-date ${dueDateUrgency}`}>
-                                                                    <Calendar size={12} />
-                                                                    <span>Remediation Due: {formatDate(vuln.cisaData.dueDate)}</span>
-                                                                    {dueDateUrgency === 'overdue' && <span className="urgency-label">OVERDUE</span>}
-                                                                    {dueDateUrgency === 'urgent' && <span className="urgency-label">URGENT</span>}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Patches */}
-                                                            {refs.patches.length > 0 && (
-                                                                <div className="ref-category">
-                                                                    <div className="ref-category-title">Patches</div>
-                                                                    {refs.patches.map((ref, idx) => {
-                                                                        const sourceCtx = getSourceContext(ref.url);
-                                                                        return (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={ref.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="alert-item-reference patch-link"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <ExternalLink size={10} />
-                                                                                <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                                {sourceCtx.label && (
-                                                                                    <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                                )}
-                                                                            </a>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Vendor Advisories */}
-                                                            {refs.vendorAdvisories.length > 0 && (
-                                                                <div className="ref-category">
-                                                                    <div className="ref-category-title">Vendor Advisories</div>
-                                                                    {refs.vendorAdvisories.map((ref, idx) => {
-                                                                        const sourceCtx = getSourceContext(ref.url);
-                                                                        return (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={ref.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="alert-item-reference"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <ExternalLink size={10} />
-                                                                                <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                                {sourceCtx.label && (
-                                                                                    <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                                )}
-                                                                            </a>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Mitigations */}
-                                                            {refs.mitigations.length > 0 && (
-                                                                <div className="ref-category">
-                                                                    <div className="ref-category-title">Mitigations</div>
-                                                                    {refs.mitigations.map((ref, idx) => {
-                                                                        const sourceCtx = getSourceContext(ref.url);
-                                                                        return (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={ref.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="alert-item-reference"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <ExternalLink size={10} />
-                                                                                <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                                {sourceCtx.label && (
-                                                                                    <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                                )}
-                                                                            </a>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Third Party Advisories */}
-                                                            {refs.thirdParty.length > 0 && (
-                                                                <div className="ref-category">
-                                                                    <div className="ref-category-title">Third Party Advisories</div>
-                                                                    {refs.thirdParty.map((ref, idx) => {
-                                                                        const sourceCtx = getSourceContext(ref.url);
-                                                                        return (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={ref.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="alert-item-reference"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <ExternalLink size={10} />
-                                                                                <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                                {sourceCtx.label && (
-                                                                                    <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                                )}
-                                                                            </a>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* All References Section - shows when no PoC or Remediation available */}
-                                            {!hasExploits && !hasRemediation && (allRefs.length > 0 || vuln.id?.startsWith('CVE-')) && (
-                                                <div className="alert-section">
-                                                    <div
-                                                        className="alert-section-header"
-                                                        onClick={(e) => toggleSection(vuln.id, 'refs', e)}
-                                                    >
-                                                        <div className="alert-section-title">
-                                                            {expandedSections[`${vuln.id}-refs`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                            <Link size={14} />
-                                                            References
-                                                            <span className="alert-section-count">{allRefs.length || 1}</span>
-                                                        </div>
-                                                    </div>
-                                                    {expandedSections[`${vuln.id}-refs`] && (
-                                                        <div className="alert-section-content">
-                                                            {allRefs.length > 0 ? (
-                                                                <>
-                                                                    {allRefs.slice(0, 10).map((ref, idx) => {
-                                                                        const sourceCtx = getSourceContext(ref.url);
-                                                                        return (
-                                                                            <a
-                                                                                key={idx}
-                                                                                href={ref.url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="alert-item-reference"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <ExternalLink size={10} />
-                                                                                <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                                {sourceCtx.label && (
-                                                                                    <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                                )}
-                                                                            </a>
-                                                                        );
-                                                                    })}
-                                                                    {allRefs.length > 10 && (
-                                                                        <div className="ref-more">+{allRefs.length - 10} more references</div>
-                                                                    )}
-                                                                </>
-                                                            ) : (
-                                                                /* Fallback NVD link when no other references */
-                                                                <a
-                                                                    href={`https://nvd.nist.gov/vuln/detail/${vuln.id}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="alert-item-reference"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <ExternalLink size={10} />
-                                                                    <span className="ref-source">nvd.nist.gov</span>
-                                                                    <span className="source-badge source-reference">NVD</span>
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Other/Uncategorized References */}
-                                            {(hasExploits || hasRemediation) && refs.other.length > 0 && (
-                                                <div className="alert-section">
-                                                    <div
-                                                        className="alert-section-header"
-                                                        onClick={(e) => toggleSection(vuln.id, 'other', e)}
-                                                    >
-                                                        <div className="alert-section-title">
-                                                            {expandedSections[`${vuln.id}-other`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                            <FileText size={14} />
-                                                            Additional References
-                                                            <span className="alert-section-count">{refs.other.length}</span>
-                                                        </div>
-                                                    </div>
-                                                    {expandedSections[`${vuln.id}-other`] && (
-                                                        <div className="alert-section-content">
-                                                            {refs.other.slice(0, 10).map((ref, idx) => {
-                                                                const sourceCtx = getSourceContext(ref.url);
-                                                                return (
-                                                                    <a
-                                                                        key={idx}
-                                                                        href={ref.url}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="alert-item-reference"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                    >
-                                                                        <ExternalLink size={10} />
-                                                                        <span className="ref-source">{getSourceName(ref.url)}</span>
-                                                                        {sourceCtx.label && (
-                                                                            <span className={`source-badge source-${sourceCtx.type}`}>{sourceCtx.label}</span>
-                                                                        )}
-                                                                    </a>
-                                                                );
-                                                            })}
-                                                            {refs.other.length > 10 && (
-                                                                <div className="ref-more">+{refs.other.length - 10} more references</div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            );
+                            return renderVulnerabilityCard(vuln, refs, hasExploits, hasRemediation, dueDateUrgency, pocSummary, remediationSummary, allRefs);
                         })
                     )}
                 </div>
