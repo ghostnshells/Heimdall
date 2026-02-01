@@ -2,6 +2,7 @@ import React from 'react';
 import { Shield, AlertTriangle, CheckCircle2, Building2 } from 'lucide-react';
 import AssetCard, { AssetCardSkeleton } from './AssetCard';
 import TimeRangeToggle from '../TimeRangeToggle/TimeRangeToggle';
+import VulnerabilityChart from './VulnerabilityChart';
 import {
     ASSETS,
     getAssetsByCategory,
@@ -115,6 +116,11 @@ const Dashboard = ({
                     <div className="stat-card-value">{stats?.low || 0}</div>
                 </div>
             </div>
+
+            {/* Vulnerability Timeline Chart */}
+            {!isLoading && vulnerabilities && (
+                <VulnerabilityChart vulnerabilities={vulnerabilities} timeRange={timeRange} />
+            )}
 
             {/* Loading State */}
             {isLoading && (
