@@ -435,35 +435,17 @@
         transform: translateX(-100%);
         transition: transform var(--transition-base);
         z-index: 1000;
-    }
-
-    .sidebar:not(.collapsed) {
-        transform: translateX(0);
+        width: var(--sidebar-width);
     }
 
     .sidebar.collapsed {
+        width: var(--sidebar-width);
+        transform: translateX(-100%);
+    }
+
+    /* Show sidebar when mobile menu is open */
+    .mobile-sidebar-open .sidebar,
+    .mobile-sidebar-open .sidebar.collapsed {
         transform: translateX(0);
-        width: 60px;
-    }
-}
-
-/* Mobile overlay when sidebar is open */
-@media (max-width: 768px) {
-    .sidebar-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-        opacity: 0;
-        visibility: hidden;
-        transition: all var(--transition-base);
-    }
-
-    .sidebar-overlay.visible {
-        opacity: 1;
-        visibility: visible;
     }
 }

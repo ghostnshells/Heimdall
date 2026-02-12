@@ -386,7 +386,7 @@ a:hover {
 /* ===== Grid Layout ===== */
 .grid-auto-fill {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: var(--space-4);
 }
 
@@ -480,23 +480,26 @@ a:hover {
 @media (max-width: 768px) {
   .app {
     --current-sidebar-width: 0px;
+    --current-news-width: 0px;
   }
 
   .app.sidebar-collapsed {
-    --current-sidebar-width: 60px;
+    --current-sidebar-width: 0px;
+  }
+
+  .app.news-collapsed {
+    --current-news-width: 0px;
   }
 
   .main-content {
     margin-left: 0;
     flex-direction: column;
+    width: 100vw;
+    min-width: 0;
   }
 
   .news-panel {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 100;
+    display: none;
   }
 
   /* Show mobile menu button */
@@ -505,15 +508,41 @@ a:hover {
   }
 }
 
+/* Sidebar overlay (used on mobile) */
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-base);
+  }
+
+  .sidebar-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 /* Mobile menu button (hidden by default) */
 .mobile-menu-btn {
   display: none;
   position: fixed;
-  top: 16px;
-  left: 16px;
+  top: 12px;
+  left: 12px;
   z-index: 1001;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -521,9 +550,11 @@ a:hover {
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mobile-menu-btn:hover {
+.mobile-menu-btn:hover,
+.mobile-menu-btn:active {
   background: var(--surface-hover);
   color: var(--accent-primary);
 }

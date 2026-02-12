@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import AlertsList from './components/AlertsList/AlertsList';
@@ -26,6 +27,7 @@ function App() {
     // Collapse states for responsive layout
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isNewsFeedCollapsed, setIsNewsFeedCollapsed] = useState(true); // Collapsed by default
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     // Vendor view mode state
     const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
@@ -119,10 +121,26 @@ function App() {
     };
 
     return (
-        <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isNewsFeedCollapsed ? 'news-collapsed' : ''}`}>
+        <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isNewsFeedCollapsed ? 'news-collapsed' : ''} ${isMobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
+            <button
+                className="mobile-menu-btn"
+                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                aria-label="Toggle menu"
+            >
+                <Menu size={20} />
+            </button>
+
+            <div
+                className={`sidebar-overlay ${isMobileSidebarOpen ? 'visible' : ''}`}
+                onClick={() => setIsMobileSidebarOpen(false)}
+            />
+
             <Sidebar
                 selectedCategory={selectedCategory}
-                onCategorySelect={setSelectedCategory}
+                onCategorySelect={(cat) => {
+                    setSelectedCategory(cat);
+                    setIsMobileSidebarOpen(false);
+                }}
                 vulnCounts={vulnCounts}
                 lastUpdated={vulnerabilities?.fetchedAt}
                 onRefresh={handleRefresh}
@@ -132,9 +150,15 @@ function App() {
                 viewMode={viewMode}
                 onViewModeChange={handleViewModeChange}
                 selectedVendor={selectedVendor}
-                onVendorSelect={handleVendorSelect}
+                onVendorSelect={(vendor) => {
+                    handleVendorSelect(vendor);
+                    setIsMobileSidebarOpen(false);
+                }}
                 selectedSubcategory={selectedSubcategory}
-                onSubcategorySelect={handleSubcategorySelect}
+                onSubcategorySelect={(subcat) => {
+                    handleSubcategorySelect(subcat);
+                    setIsMobileSidebarOpen(false);
+                }}
             />
 
             <main className="main-content">

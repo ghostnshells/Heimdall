@@ -648,4 +648,12 @@
     .alerts-panel {
         width: 100%;
     }
+
+    .alerts-panel-header {
+        padding: var(--space-4);
+    }
+
+    .alert-item-header {
+        flex-direction: column;
+    }
 }
