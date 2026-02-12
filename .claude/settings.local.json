@@ -5,7 +5,8 @@
       "Bash(powershell -Command \"Get-ChildItem -Recurse -Directory | Select-Object -ExpandProperty FullName\")",
       "Bash(powershell -Command \"Get-ChildItem -Recurse | Select-Object -ExpandProperty FullName | Sort-Object\")",
       "Bash(npx create-next-app@latest:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(wc:*)"
     ]
   }
 }

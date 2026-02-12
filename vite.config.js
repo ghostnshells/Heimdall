@@ -3,9 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // Set base path for deployment at a subpath (e.g., yoursite.com/heimdall/)
-  // Change this to match your deployment path, or use '/' for root deployment
-  base: '/heimdall/',
+  // Base path - use '/' when served by Express at root
+  base: '/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets'

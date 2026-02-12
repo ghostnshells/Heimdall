@@ -21,6 +21,9 @@
     "react-dom": "^18.2.0",
     "recharts": "^3.7.0"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
