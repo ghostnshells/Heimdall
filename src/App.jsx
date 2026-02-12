@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Newspaper } from 'lucide-react';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import AlertsList from './components/AlertsList/AlertsList';
@@ -28,6 +28,7 @@ function App() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isNewsFeedCollapsed, setIsNewsFeedCollapsed] = useState(true); // Collapsed by default
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const [isMobileNewsOpen, setIsMobileNewsOpen] = useState(false);
 
     // Vendor view mode state
     const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
@@ -122,13 +123,26 @@ function App() {
 
     return (
         <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isNewsFeedCollapsed ? 'news-collapsed' : ''} ${isMobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
-            <button
-                className="mobile-menu-btn"
-                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                aria-label="Toggle menu"
-            >
-                <Menu size={20} />
-            </button>
+            <div className="mobile-header">
+                <button
+                    className="mobile-menu-btn"
+                    onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                    aria-label="Toggle menu"
+                >
+                    <Menu size={20} />
+                </button>
+                <div className="mobile-logo">
+                    <img src={`${import.meta.env.BASE_URL}heimdall_prod_logo.png`} alt="Heimdall" className="mobile-logo-img" />
+                    <span className="mobile-logo-text">HEIMDALL</span>
+                </div>
+                <button
+                    className="mobile-news-btn"
+                    onClick={() => setIsMobileNewsOpen(!isMobileNewsOpen)}
+                    aria-label="Toggle news"
+                >
+                    <Newspaper size={20} />
+                </button>
+            </div>
 
             <div
                 className={`sidebar-overlay ${isMobileSidebarOpen ? 'visible' : ''}`}
@@ -192,6 +206,20 @@ function App() {
                 isOpen={isPanelOpen}
                 onClose={handleClosePanel}
             />
+
+            {/* Mobile news overlay */}
+            <div className={`mobile-news-overlay ${isMobileNewsOpen ? 'open' : ''}`}>
+                <NewsFeed
+                    isCollapsed={false}
+                    onToggleCollapse={() => setIsMobileNewsOpen(false)}
+                />
+            </div>
+            {isMobileNewsOpen && (
+                <div
+                    className="mobile-news-backdrop"
+                    onClick={() => setIsMobileNewsOpen(false)}
+                />
+            )}
 
             {error && (
                 <div style={{

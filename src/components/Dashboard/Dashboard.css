@@ -232,7 +232,7 @@
     .dashboard {
         margin-left: 0;
         padding: var(--space-3);
-        padding-top: calc(var(--space-3) + 56px); /* Space for mobile menu button */
+        padding-top: calc(var(--space-3) + 60px); /* Space for mobile header bar */
     }
 
     .dashboard-header {

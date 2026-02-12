@@ -501,11 +501,6 @@ a:hover {
   .news-panel {
     display: none;
   }
-
-  /* Show mobile menu button */
-  .mobile-menu-btn {
-    display: flex;
-  }
 }
 
 /* Sidebar overlay (used on mobile) */
@@ -534,16 +529,34 @@ a:hover {
   }
 }
 
-/* Mobile menu button (hidden by default) */
-.mobile-menu-btn {
+/* Mobile header bar (hidden by default) */
+.mobile-header {
   display: none;
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1001;
-  width: 44px;
-  height: 44px;
-  background: var(--bg-secondary);
+}
+
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 var(--space-3);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    z-index: 998;
+  }
+}
+
+.mobile-menu-btn,
+.mobile-news-btn {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   align-items: center;
@@ -554,7 +567,68 @@ a:hover {
 }
 
 .mobile-menu-btn:hover,
-.mobile-menu-btn:active {
+.mobile-menu-btn:active,
+.mobile-news-btn:hover,
+.mobile-news-btn:active {
   background: var(--surface-hover);
   color: var(--accent-primary);
+}
+
+.mobile-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mobile-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+}
+
+.mobile-logo-text {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: #37a8a8;
+  letter-spacing: -0.02em;
+}
+
+/* Mobile news overlay */
+.mobile-news-overlay {
+  display: none;
+}
+
+.mobile-news-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-news-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 400px;
+    z-index: 1100;
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+
+  .mobile-news-overlay.open {
+    transform: translateX(0);
+  }
+
+  .mobile-news-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1099;
+  }
 }
