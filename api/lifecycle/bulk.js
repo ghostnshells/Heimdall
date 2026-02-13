@@ -1,7 +1,7 @@
 // POST /api/lifecycle/bulk — Bulk status update for multiple CVEs
 
-import { requireAuth } from '../lib/authMiddleware.js';
-import { setBulkStatus } from '../lib/lifecycleService.js';
+import { requireAuth } from '../../server/lib/authMiddleware.js';
+import { setBulkStatus } from '../../server/lib/lifecycleService.js';
 
 export default requireAuth(async function handler(req, res) {
     if (req.method !== 'POST') {

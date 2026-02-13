@@ -1,7 +1,7 @@
 // GET/PUT /api/lifecycle/sla — Get or set SLA configuration
 
-import { requireAuth } from '../lib/authMiddleware.js';
-import { getSLAConfig, setSLAConfig } from '../lib/lifecycleService.js';
+import { requireAuth } from '../../server/lib/authMiddleware.js';
+import { getSLAConfig, setSLAConfig } from '../../server/lib/lifecycleService.js';
 
 export default requireAuth(async function handler(req, res) {
     const userId = req.user.email;

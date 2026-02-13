@@ -1,6 +1,6 @@
 // POST /api/auth/signup — Create new user account
 
-import { createUser, generateTokens, storeRefreshToken } from '../lib/auth.js';
+import { createUser, generateTokens, storeRefreshToken } from '../../server/lib/auth.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {

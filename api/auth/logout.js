@@ -1,6 +1,6 @@
 // POST /api/auth/logout — Revoke refresh token
 
-import { revokeRefreshToken } from '../lib/auth.js';
+import { revokeRefreshToken } from '../../server/lib/auth.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {

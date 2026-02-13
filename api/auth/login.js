@@ -1,6 +1,6 @@
 // POST /api/auth/login — Authenticate user and return tokens
 
-import { validatePassword, generateTokens, storeRefreshToken } from '../lib/auth.js';
+import { validatePassword, generateTokens, storeRefreshToken } from '../../server/lib/auth.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {

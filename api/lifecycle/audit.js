@@ -1,7 +1,7 @@
 // GET /api/lifecycle/audit — Get audit trail for a CVE
 
-import { requireAuth } from '../lib/authMiddleware.js';
-import { getAuditTrail } from '../lib/lifecycleService.js';
+import { requireAuth } from '../../server/lib/authMiddleware.js';
+import { getAuditTrail } from '../../server/lib/lifecycleService.js';
 
 export default requireAuth(async function handler(req, res) {
     if (req.method !== 'GET') {

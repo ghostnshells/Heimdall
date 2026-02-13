@@ -1,7 +1,7 @@
 // GET/PUT /api/lifecycle/status — Get or update vulnerability status
 
-import { requireAuth } from '../lib/authMiddleware.js';
-import { getVulnStatus, setVulnStatus } from '../lib/lifecycleService.js';
+import { requireAuth } from '../../server/lib/authMiddleware.js';
+import { getVulnStatus, setVulnStatus } from '../../server/lib/lifecycleService.js';
 
 export default requireAuth(async function handler(req, res) {
     const { cveId } = req.query;

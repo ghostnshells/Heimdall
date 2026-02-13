@@ -2,23 +2,23 @@
 // Runs every 10 minutes, processes 4 assets per run
 // Full refresh cycle completes in ~50 minutes (5 batches × 10 min)
 
-import { ASSETS } from '../lib/assets.js';
+import { ASSETS } from '../../server/lib/assets.js';
 import {
     fetchVulnerabilitiesForAsset,
     searchCISAForAsset,
     sortByMostRecentDate,
     getDateRange
-} from '../lib/nvdService.js';
+} from '../../server/lib/nvdService.js';
 import {
     setAssetVulns,
     assembleFullCache,
     getBatchIndex,
     incrementBatchIndex,
     BATCH_SIZE
-} from '../lib/redis.js';
-import { enrichWithEPSS } from '../lib/epssService.js';
-import { enrichWithAttackTechniques } from '../lib/attackMapping.js';
-import { enrichWithThreatActors } from '../lib/threatActorService.js';
+} from '../../server/lib/redis.js';
+import { enrichWithEPSS } from '../../server/lib/epssService.js';
+import { enrichWithAttackTechniques } from '../../server/lib/attackMapping.js';
+import { enrichWithThreatActors } from '../../server/lib/threatActorService.js';
 
 const TIME_RANGES = ['24h', '7d', '30d', '90d', '119d'];
 

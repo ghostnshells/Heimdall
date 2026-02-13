@@ -1,7 +1,7 @@
 // GET /api/auth/me — Return current authenticated user
 
-import { requireAuth } from '../lib/authMiddleware.js';
-import { getUser } from '../lib/auth.js';
+import { requireAuth } from '../../server/lib/authMiddleware.js';
+import { getUser } from '../../server/lib/auth.js';
 
 export default requireAuth(async function handler(req, res) {
     if (req.method !== 'GET') {

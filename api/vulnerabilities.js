@@ -1,6 +1,6 @@
 // Vercel Serverless Function — serves cached vulnerability data from Upstash Redis
 
-import { getVulnData, getCacheMetadata } from './lib/redis.js';
+import { getVulnData, getCacheMetadata } from '../server/lib/redis.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
