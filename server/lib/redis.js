@@ -2,9 +2,42 @@
 
 import { Redis } from '@upstash/redis';
 
+function normalizeEnvValue(raw, keyName) {
+    if (!raw || typeof raw !== 'string') return '';
+
+    let value = raw.trim();
+
+    // Handle accidental "KEY=value" pastes in env var value fields.
+    const prefix = `${keyName}=`;
+    if (value.startsWith(prefix)) {
+        value = value.slice(prefix.length).trim();
+    }
+
+    // Strip matching surrounding quotes.
+    if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+    ) {
+        value = value.slice(1, -1).trim();
+    }
+
+    return value;
+}
+
+const redisUrl = normalizeEnvValue(process.env.UPSTASH_REDIS_REST_URL, 'UPSTASH_REDIS_REST_URL');
+const redisToken = normalizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN, 'UPSTASH_REDIS_REST_TOKEN');
+
+if (!redisUrl || !redisUrl.startsWith('https://')) {
+    throw new Error('Invalid UPSTASH_REDIS_REST_URL. Set it to a raw https URL value only.');
+}
+
+if (!redisToken) {
+    throw new Error('Missing UPSTASH_REDIS_REST_TOKEN. Set it to the raw token value only.');
+}
+
 const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    url: redisUrl,
+    token: redisToken,
 });
 
 const CACHE_TTL = 7200; // 2 hours in seconds (safety margin over 50-min refresh cycle)
