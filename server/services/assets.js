@@ -253,6 +253,110 @@ export const ASSETS = [
         cpeVendor: 'crestron',
         cpeProducts: ['crestron', 'dm', 'nvx', 'flex'],
         keywords: ['crestron', 'crestron av', 'crestron control']
+    },
+
+    // ==========================================
+    // Linux Distros
+    // ==========================================
+    {
+        id: 'ubuntu',
+        name: 'Ubuntu',
+        vendor: 'Canonical',
+        cpeVendor: 'canonical',
+        cpeProducts: ['ubuntu_linux'],
+        keywords: ['ubuntu', 'canonical ubuntu']
+    },
+    {
+        id: 'rhel',
+        name: 'RHEL',
+        vendor: 'Red Hat',
+        cpeVendor: 'redhat',
+        cpeProducts: ['enterprise_linux', 'enterprise_linux_server'],
+        keywords: ['red hat enterprise linux', 'rhel']
+    },
+    {
+        id: 'debian',
+        name: 'Debian',
+        vendor: 'Debian',
+        cpeVendor: 'debian',
+        cpeProducts: ['debian_linux'],
+        keywords: ['debian linux', 'debian']
+    },
+
+    // ==========================================
+    // Cloud Platforms
+    // ==========================================
+    {
+        id: 'aws',
+        name: 'AWS',
+        vendor: 'Amazon',
+        cpeVendor: 'amazon',
+        cpeProducts: ['aws', 'linux', 'ec2', 's3'],
+        keywords: ['amazon web services', 'aws', 'amazon linux']
+    },
+    {
+        id: 'azure-cloud',
+        name: 'Azure Cloud',
+        vendor: 'Microsoft',
+        cpeVendor: 'microsoft',
+        cpeProducts: ['azure', 'azure_active_directory', 'azure_devops_server'],
+        keywords: ['microsoft azure', 'azure cloud', 'azure active directory', 'azure devops']
+    },
+    {
+        id: 'google-cloud',
+        name: 'Google Cloud',
+        vendor: 'Google',
+        cpeVendor: 'google',
+        cpeProducts: ['cloud_platform', 'cloud_sdk'],
+        keywords: ['google cloud platform', 'gcp', 'google cloud sdk']
+    },
+
+    // ==========================================
+    // Network Security
+    // ==========================================
+    {
+        id: 'fortinet',
+        name: 'Fortinet',
+        vendor: 'Fortinet',
+        cpeVendor: 'fortinet',
+        cpeProducts: ['fortigate', 'fortios', 'fortimanager', 'fortianalyzer'],
+        keywords: ['fortinet', 'fortigate', 'fortios', 'fortimanager', 'fortianalyzer']
+    },
+    {
+        id: 'paloalto',
+        name: 'Palo Alto Networks',
+        vendor: 'Palo Alto Networks',
+        cpeVendor: 'paloaltonetworks',
+        cpeProducts: ['pan-os', 'cortex_xdr', 'globalprotect', 'panorama'],
+        keywords: ['palo alto networks', 'pan-os', 'cortex xdr', 'globalprotect', 'panorama']
+    },
+    {
+        id: 'juniper',
+        name: 'Juniper',
+        vendor: 'Juniper Networks',
+        cpeVendor: 'juniper',
+        cpeProducts: ['junos', 'junos_os', 'srx', 'mx'],
+        keywords: ['juniper networks', 'junos', 'juniper srx', 'juniper mx']
+    },
+
+    // ==========================================
+    // Containers
+    // ==========================================
+    {
+        id: 'docker',
+        name: 'Docker',
+        vendor: 'Docker',
+        cpeVendor: 'docker',
+        cpeProducts: ['docker', 'docker_engine', 'docker_desktop'],
+        keywords: ['docker', 'docker engine', 'docker desktop']
+    },
+    {
+        id: 'kubernetes',
+        name: 'Kubernetes',
+        vendor: 'Kubernetes',
+        cpeVendor: 'kubernetes',
+        cpeProducts: ['kubernetes'],
+        keywords: ['kubernetes', 'k8s']
     }
 ];
 

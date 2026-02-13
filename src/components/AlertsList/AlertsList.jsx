@@ -1,12 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers } from 'lucide-react';
+import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers, Zap, Target, Skull } from 'lucide-react';
 import { matchVulnToSubProducts } from '../../data/assets';
+import StatusBadge from '../Lifecycle/StatusBadge';
+import SLAIndicator from '../Lifecycle/SLAIndicator';
+import AuditTrail from '../Lifecycle/AuditTrail';
 import './AlertsList.css';
 
-const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
+const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose, isAuthenticated = false, slaConfig, vulnStatuses = {}, onStatusChange }) => {
     const [expandedId, setExpandedId] = useState(null);
     const [expandedSections, setExpandedSections] = useState({});
     const [expandedProductSections, setExpandedProductSections] = useState({});
+    const [statusFilter, setStatusFilter] = useState('all');
 
     // Group vulnerabilities by sub-product type (e.g., "Software", "Switch", "Storage")
     const groupedVulnerabilities = useMemo(() => {
@@ -107,6 +111,13 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
             case 'LOW': return 'low';
             default: return 'unknown';
         }
+    };
+
+    const getEPSSClass = (score) => {
+        if (score >= 0.5) return 'epss-critical';
+        if (score >= 0.1) return 'epss-high';
+        if (score >= 0.01) return 'epss-medium';
+        return 'epss-low';
     };
 
     const categorizeReferences = (references) => {
@@ -343,6 +354,15 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
         };
     };
 
+    // Filter vulnerabilities by status
+    const filteredVulnerabilities = useMemo(() => {
+        if (statusFilter === 'all') return vulnerabilities;
+        return vulnerabilities.filter(v => {
+            const status = vulnStatuses[v.id]?.status || 'new';
+            return status === statusFilter;
+        });
+    }, [vulnerabilities, statusFilter, vulnStatuses]);
+
     // Helper function to render a vulnerability card (used by both grouped and flat views)
     const renderVulnerabilityCard = (vuln, refs, hasExploits, hasRemediation, dueDateUrgency, pocSummary, remediationSummary, allRefs) => (
         <div
@@ -353,14 +373,28 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
             <div className="alert-item-header">
                 <div className="alert-item-header-left">
                     <span className="alert-item-id">{vuln.id}</span>
-                    {vuln.activelyExploited && (
-                        <span className="actively-exploited-badge">
-                            <AlertTriangle size={12} />
-                            Actively Exploited
-                        </span>
-                    )}
+                    <div className="alert-item-badges">
+                        {vuln.activelyExploited && (
+                            <span className="actively-exploited-badge">
+                                <AlertTriangle size={12} />
+                                Actively Exploited
+                            </span>
+                        )}
+                        {vuln.cisaData?.knownRansomwareCampaignUse === 'Known' && (
+                            <span className="ransomware-badge">
+                                <Skull size={12} />
+                                Ransomware
+                            </span>
+                        )}
+                    </div>
                 </div>
                 <div className="alert-item-score">
+                    {vuln.epssScore != null && (
+                        <span className={`alert-item-epss ${getEPSSClass(vuln.epssScore)}`} title={`EPSS: ${(vuln.epssScore * 100).toFixed(1)}% probability of exploitation in next 30 days (${Math.round(vuln.epssPercentile * 100)}th percentile)`}>
+                            <Zap size={10} />
+                            EPSS {(vuln.epssScore * 100).toFixed(1)}%
+                        </span>
+                    )}
                     {vuln.cvssScore && (
                         <span className={`alert-item-cvss ${getSeverityClass(vuln.severity)}`}>
                             CVSS {vuln.cvssScore.toFixed(1)}
@@ -370,6 +404,21 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
                         {vuln.severity || 'Unknown'}
                     </span>
                 </div>
+            </div>
+
+            <div className="alert-item-lifecycle">
+                <StatusBadge
+                    cveId={vuln.id}
+                    currentStatus={vulnStatuses[vuln.id]?.status || 'new'}
+                    onStatusChange={onStatusChange}
+                    isAuthenticated={isAuthenticated}
+                />
+                <SLAIndicator
+                    publishedDate={vuln.published}
+                    severity={vuln.severity}
+                    status={vulnStatuses[vuln.id]?.status || 'new'}
+                    slaConfig={slaConfig}
+                />
             </div>
 
             <p className="alert-item-description">
@@ -389,6 +438,29 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
 
             {expandedId === vuln.id && (
                 <>
+                    {/* ATT&CK Techniques */}
+                    {vuln.attackTechniques && vuln.attackTechniques.length > 0 && (
+                        <div className="attack-techniques">
+                            <Target size={12} />
+                            {vuln.attackTechniques.map((tech, idx) => (
+                                <a
+                                    key={idx}
+                                    href={`https://attack.mitre.org/techniques/${tech.id}/`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="attack-technique-badge"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={tech.name}
+                                >
+                                    {tech.id}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Audit Trail */}
+                    <AuditTrail cveId={vuln.id} isAuthenticated={isAuthenticated} />
+
                     {/* Proof of Concept Section */}
                     {hasExploits && (
                         <div className="alert-section poc-section">
@@ -643,24 +715,46 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
                     <div>
                         <h2 className="alerts-panel-title">{asset?.name || 'Vulnerabilities'}</h2>
                         <p className="alerts-panel-subtitle">
-                            {vulnerabilities.length} {vulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'} found
+                            {filteredVulnerabilities.length} of {vulnerabilities.length} {vulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}
+                            {statusFilter !== 'all' && ` (${statusFilter.replace('_', ' ')})`}
                         </p>
                     </div>
-                    <button className="alerts-panel-close" onClick={onClose}>
-                        <X size={18} />
-                    </button>
+                    <div className="alerts-panel-actions">
+                        {isAuthenticated && (
+                            <select
+                                className="status-filter-select"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="new">New</option>
+                                <option value="acknowledged">Acknowledged</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="patched">Patched</option>
+                                <option value="mitigated">Mitigated</option>
+                                <option value="accepted_risk">Accepted Risk</option>
+                                <option value="false_positive">False Positive</option>
+                            </select>
+                        )}
+                        <button className="alerts-panel-close" onClick={onClose}>
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="alerts-list">
-                    {vulnerabilities.length === 0 ? (
+                    {filteredVulnerabilities.length === 0 ? (
                         <div className="alerts-empty">
                             <CheckCircle2 />
                             <h3 className="alerts-empty-title">No vulnerabilities</h3>
                             <p className="alerts-empty-text">
-                                No known vulnerabilities found for this asset in the selected time range.
+                                {vulnerabilities.length > 0 && statusFilter !== 'all'
+                                    ? 'No vulnerabilities match the selected status filter.'
+                                    : 'No known vulnerabilities found for this asset in the selected time range.'}
                             </p>
                         </div>
-                    ) : groupedVulnerabilities ? (
+                    ) : groupedVulnerabilities && statusFilter === 'all' ? (
                         /* Grouped display by product/software type */
                         groupedVulnerabilities.map(group => (
                             <div key={group.type} className="product-section">
@@ -699,8 +793,8 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose }) => {
                             </div>
                         ))
                     ) : (
-                        /* Flat list display (no sub-products) */
-                        vulnerabilities.map(vuln => {
+                        /* Flat list display (no sub-products, or filtered view) */
+                        filteredVulnerabilities.map(vuln => {
                             const refs = categorizeReferences(vuln.references);
                             const hasExploits = refs.exploits.length > 0;
                             const hasRemediation = refs.patches.length > 0 || refs.vendorAdvisories.length > 0 || refs.mitigations.length > 0 || refs.thirdParty.length > 0 || vuln.cisaData;

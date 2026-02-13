@@ -16,8 +16,10 @@ import {
     incrementBatchIndex,
     BATCH_SIZE
 } from '../lib/redis.js';
+import { enrichWithEPSS } from '../lib/epssService.js';
+import { enrichWithAttackTechniques } from '../lib/attackMapping.js';
 
-const TIME_RANGES = ['7d', '30d', '90d'];
+const TIME_RANGES = ['24h', '7d', '30d', '90d', '119d'];
 
 export default async function handler(req, res) {
     // Verify this is a legitimate cron invocation
@@ -81,10 +83,16 @@ export default async function handler(req, res) {
 
                     const sorted = sortByMostRecentDate(merged);
 
-                    // Store per-asset results in Redis
-                    await setAssetVulns(asset.id, timeRange, sorted);
+                    // Enrich with ATT&CK technique mappings (synchronous, no API call)
+                    const withAttack = enrichWithAttackTechniques(sorted);
 
-                    console.log(`[Cron] ${asset.name} (${timeRange}): ${sorted.length} vulnerabilities`);
+                    // Enrich with EPSS scores (async, batched API call)
+                    const enriched = await enrichWithEPSS(withAttack);
+
+                    // Store per-asset results in Redis
+                    await setAssetVulns(asset.id, timeRange, enriched);
+
+                    console.log(`[Cron] ${asset.name} (${timeRange}): ${enriched.length} vulnerabilities`);
                 } catch (error) {
                     console.error(`[Cron] Error for ${asset.name} (${timeRange}):`, error.message);
                     // Store empty array so assembly still works

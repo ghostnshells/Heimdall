@@ -871,6 +871,104 @@ const PRODUCT_VALIDATORS = {
         const hasExcludedProduct = explicitExclusions.some(term => desc.includes(term));
 
         return (hasFirefoxCPE || descHasFirefoxContext) && !hasExcludedProduct;
+    },
+
+    // Ubuntu
+    'ubuntu': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasUbuntuCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':canonical:'));
+        const descHasContext = desc.includes('ubuntu');
+        return hasUbuntuCPE || descHasContext;
+    },
+
+    // RHEL
+    'rhel': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasRHELCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':redhat:enterprise_linux'));
+        const descHasContext = desc.includes('red hat enterprise linux') || desc.includes('rhel');
+        return hasRHELCPE || descHasContext;
+    },
+
+    // Debian
+    'debian': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasDebianCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':debian:'));
+        const descHasContext = desc.includes('debian');
+        return hasDebianCPE || descHasContext;
+    },
+
+    // AWS
+    'aws': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasAWSCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':amazon:'));
+        const descHasContext = desc.includes('amazon web services') || desc.includes('aws') ||
+            desc.includes('amazon linux') || desc.includes('amazon ec2');
+        const exclusions = ['amazon kindle', 'amazon fire', 'amazon alexa', 'amazon ring'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasAWSCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Azure Cloud
+    'azure-cloud': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasAzureCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':microsoft:azure'));
+        const descHasContext = desc.includes('azure') && (desc.includes('microsoft') || desc.includes('cloud') || desc.includes('active directory') || desc.includes('devops'));
+        return hasAzureCPE || descHasContext;
+    },
+
+    // Google Cloud
+    'google-cloud': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasGCPCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':google:cloud_platform') || p.cpe?.includes(':google:cloud_sdk'));
+        const descHasContext = desc.includes('google cloud') || desc.includes('gcp') || desc.includes('cloud sdk');
+        return hasGCPCPE || descHasContext;
+    },
+
+    // Fortinet
+    'fortinet': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasFortinetCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':fortinet:'));
+        const descHasContext = desc.includes('fortinet') || desc.includes('fortigate') || desc.includes('fortios') || desc.includes('fortimanager') || desc.includes('fortianalyzer');
+        const exclusions = ['watchguard', 'palo alto', 'checkpoint', 'cisco asa'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasFortinetCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Palo Alto Networks
+    'paloalto': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasPANCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':paloaltonetworks:'));
+        const descHasContext = desc.includes('palo alto') || desc.includes('pan-os') || desc.includes('cortex xdr') || desc.includes('globalprotect') || desc.includes('panorama');
+        const exclusions = ['fortinet', 'watchguard', 'checkpoint', 'cisco asa'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasPANCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Juniper
+    'juniper': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasJuniperCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':juniper:'));
+        const descHasContext = desc.includes('juniper') || desc.includes('junos');
+        const exclusions = ['cisco', 'fortinet', 'palo alto', 'arista'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasJuniperCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Docker
+    'docker': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasDockerCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':docker:'));
+        const descHasContext = desc.includes('docker engine') || desc.includes('docker desktop') ||
+            (desc.includes('docker') && (desc.includes('container') || desc.includes('daemon') || desc.includes('moby')));
+        return hasDockerCPE || descHasContext;
+    },
+
+    // Kubernetes
+    'kubernetes': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasK8sCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':kubernetes:'));
+        const descHasContext = desc.includes('kubernetes') || desc.includes('k8s');
+        return hasK8sCPE || descHasContext;
     }
 };
 

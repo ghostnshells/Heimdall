@@ -1,0 +1,27 @@
+HEIMDALL - FEATURE UPDATE CANDIDATES
+=====================================
+(Status: Approved for Implementation)
+
+APPROVED FEATURES
+-----------------
+
+1. THREAT INTELLIGENCE ENRICHMENT
+   - EPSS (Exploit Prediction Scoring System) scores per CVE
+   - MITRE ATT&CK technique/tactic mapping
+   - Threat actor association (CISA, Mandiant data)
+
+2. VULNERABILITY LIFECYCLE TRACKING
+   - Patch status tracking (patched, mitigated, accepted risk)
+   - SLA tracking with time-to-remediation metrics
+   - Audit trail (who acknowledged/resolved, when)
+
+3. ASSET EXPANSION
+   - Linux distros (Ubuntu, RHEL, Debian)
+   - Cloud platforms (AWS, Azure, GCP)
+   - Network gear (Fortinet, Palo Alto, Juniper)
+   - Container/K8s (Docker, Kubernetes)
+
+4. BUG FIX: REDIS CACHING
+   - Investigate why data reloads on every visit from different devices
+   - Verify Redis/Upstash configuration and cache hit behavior
+

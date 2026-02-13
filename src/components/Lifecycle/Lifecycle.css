@@ -1,0 +1,213 @@
+/* Status Badge */
+.status-badge-container {
+    position: relative;
+    display: inline-flex;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.status-badge:hover:not(:disabled) {
+    border-color: var(--status-color, var(--border-default));
+    background: var(--bg-elevated);
+}
+
+.status-badge:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--status-color, var(--text-tertiary));
+    flex-shrink: 0;
+}
+
+.status-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+    min-width: 150px;
+    overflow: hidden;
+}
+
+.status-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    text-align: left;
+}
+
+.status-option:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+.status-option.active {
+    background: var(--surface-active);
+    color: var(--text-primary);
+    font-weight: var(--font-semibold);
+}
+
+/* SLA Indicator */
+.sla-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: var(--font-semibold);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.sla-indicator.sla-breached {
+    background: var(--severity-critical-bg);
+    color: var(--severity-critical);
+    animation: pulse-warning 2s infinite;
+}
+
+.sla-indicator.sla-urgent {
+    background: var(--severity-high-bg);
+    color: var(--severity-high);
+}
+
+.sla-indicator.sla-ok {
+    background: var(--severity-info-bg);
+    color: var(--severity-info);
+}
+
+.sla-indicator.sla-resolved {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+/* Audit Trail */
+.audit-trail {
+    margin-top: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.audit-trail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-primary);
+    transition: background var(--transition-fast);
+}
+
+.audit-trail-header:hover {
+    background: var(--surface-hover);
+}
+
+.audit-trail-count {
+    font-size: var(--text-xs);
+    background: var(--bg-tertiary);
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.audit-trail-content {
+    padding: var(--space-3);
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.audit-trail-loading,
+.audit-trail-empty {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    text-align: center;
+    padding: var(--space-3);
+}
+
+.audit-trail-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.audit-trail-entry {
+    display: flex;
+    gap: var(--space-3);
+    position: relative;
+}
+
+.audit-trail-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.audit-trail-entry-content {
+    flex: 1;
+}
+
+.audit-trail-change {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+}
+
+.audit-status {
+    font-weight: var(--font-semibold);
+}
+
+.audit-arrow {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+}
+
+.audit-trail-time {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+
+.audit-trail-notes {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-style: italic;
+}

@@ -18,7 +18,16 @@ export const VENDOR_GROUPS = {
     ZOOM: 'Zoom',
     GOOGLE: 'Google',
     MOZILLA: 'Mozilla',
-    CRESTRON: 'Crestron'
+    CRESTRON: 'Crestron',
+    CANONICAL: 'Canonical',
+    REDHAT: 'Red Hat',
+    DEBIAN: 'Debian',
+    AMAZON: 'Amazon',
+    FORTINET: 'Fortinet',
+    PALO_ALTO: 'Palo Alto Networks',
+    JUNIPER: 'Juniper',
+    DOCKER: 'Docker',
+    KUBERNETES: 'Kubernetes'
 };
 
 // Asset categories for filtering
@@ -36,7 +45,11 @@ export const ASSET_CATEGORIES = {
     BROWSERS: 'Browsers',
     AV_CONTROL: 'AV & Control',
     OPERATING_SYSTEMS: 'Operating Systems',
-    ENTERPRISE_SOFTWARE: 'Enterprise Software'
+    ENTERPRISE_SOFTWARE: 'Enterprise Software',
+    LINUX_DISTROS: 'Linux Distros',
+    CLOUD_PLATFORMS: 'Cloud Platforms',
+    NETWORK_SECURITY: 'Network Security',
+    CONTAINERS: 'Containers'
 };
 
 export const ASSETS = [
@@ -398,6 +411,192 @@ export const ASSETS = [
         cpeVendor: 'crestron',
         cpeProducts: ['crestron', 'dm', 'nvx', 'flex'],
         keywords: ['crestron', 'crestron av', 'crestron control']
+    },
+
+    // ==========================================
+    // LINUX DISTROS
+    // ==========================================
+    {
+        id: 'ubuntu',
+        name: 'Ubuntu',
+        vendor: 'Canonical',
+        category: ASSET_CATEGORIES.LINUX_DISTROS,
+        vendorGroup: VENDOR_GROUPS.CANONICAL,
+        description: 'Ubuntu Linux distribution',
+        cpeVendor: 'canonical',
+        cpeProducts: ['ubuntu_linux'],
+        keywords: ['ubuntu', 'canonical ubuntu'],
+        subProducts: [
+            { id: 'ubuntu-server', name: 'Ubuntu Server', type: 'Server OS' },
+            { id: 'ubuntu-desktop', name: 'Ubuntu Desktop', type: 'Desktop OS' }
+        ]
+    },
+    {
+        id: 'rhel',
+        name: 'RHEL',
+        vendor: 'Red Hat',
+        category: ASSET_CATEGORIES.LINUX_DISTROS,
+        vendorGroup: VENDOR_GROUPS.REDHAT,
+        description: 'Red Hat Enterprise Linux',
+        cpeVendor: 'redhat',
+        cpeProducts: ['enterprise_linux', 'enterprise_linux_server'],
+        keywords: ['red hat enterprise linux', 'rhel'],
+        subProducts: [
+            { id: 'rhel-server', name: 'RHEL Server', type: 'Server OS' },
+            { id: 'rhel-workstation', name: 'RHEL Workstation', type: 'Desktop OS' }
+        ]
+    },
+    {
+        id: 'debian',
+        name: 'Debian',
+        vendor: 'Debian',
+        category: ASSET_CATEGORIES.LINUX_DISTROS,
+        vendorGroup: VENDOR_GROUPS.DEBIAN,
+        description: 'Debian Linux distribution',
+        cpeVendor: 'debian',
+        cpeProducts: ['debian_linux'],
+        keywords: ['debian linux', 'debian'],
+        subProducts: [
+            { id: 'debian-stable', name: 'Debian Stable', type: 'Server OS' }
+        ]
+    },
+
+    // ==========================================
+    // CLOUD PLATFORMS
+    // ==========================================
+    {
+        id: 'aws',
+        name: 'AWS',
+        vendor: 'Amazon',
+        category: ASSET_CATEGORIES.CLOUD_PLATFORMS,
+        vendorGroup: VENDOR_GROUPS.AMAZON,
+        description: 'Amazon Web Services cloud platform',
+        cpeVendor: 'amazon',
+        cpeProducts: ['aws', 'linux', 'ec2', 's3'],
+        keywords: ['amazon web services', 'aws', 'amazon linux'],
+        subProducts: [
+            { id: 'aws-ec2', name: 'EC2', type: 'Compute' },
+            { id: 'aws-s3', name: 'S3', type: 'Storage' },
+            { id: 'amazon-linux', name: 'Amazon Linux', type: 'OS' }
+        ]
+    },
+    {
+        id: 'azure-cloud',
+        name: 'Azure Cloud',
+        vendor: 'Microsoft',
+        category: ASSET_CATEGORIES.CLOUD_PLATFORMS,
+        vendorGroup: VENDOR_GROUPS.MICROSOFT,
+        description: 'Microsoft Azure cloud services',
+        cpeVendor: 'microsoft',
+        cpeProducts: ['azure', 'azure_active_directory', 'azure_devops_server'],
+        keywords: ['microsoft azure', 'azure cloud', 'azure active directory', 'azure devops'],
+        subProducts: [
+            { id: 'azure-ad', name: 'Azure AD / Entra ID', type: 'Identity' },
+            { id: 'azure-devops', name: 'Azure DevOps', type: 'DevOps' },
+            { id: 'azure-platform', name: 'Azure Platform', type: 'Cloud' }
+        ]
+    },
+    {
+        id: 'google-cloud',
+        name: 'Google Cloud',
+        vendor: 'Google',
+        category: ASSET_CATEGORIES.CLOUD_PLATFORMS,
+        vendorGroup: VENDOR_GROUPS.GOOGLE,
+        description: 'Google Cloud Platform',
+        cpeVendor: 'google',
+        cpeProducts: ['cloud_platform', 'cloud_sdk'],
+        keywords: ['google cloud platform', 'gcp', 'google cloud sdk'],
+        subProducts: [
+            { id: 'gcp-platform', name: 'GCP Platform', type: 'Cloud' },
+            { id: 'gcp-sdk', name: 'Cloud SDK', type: 'Tooling' }
+        ]
+    },
+
+    // ==========================================
+    // NETWORK SECURITY
+    // ==========================================
+    {
+        id: 'fortinet',
+        name: 'Fortinet',
+        vendor: 'Fortinet',
+        category: ASSET_CATEGORIES.NETWORK_SECURITY,
+        vendorGroup: VENDOR_GROUPS.FORTINET,
+        description: 'Fortinet network security products including FortiGate, FortiOS, FortiManager, and FortiAnalyzer',
+        cpeVendor: 'fortinet',
+        cpeProducts: ['fortigate', 'fortios', 'fortimanager', 'fortianalyzer'],
+        keywords: ['fortinet', 'fortigate', 'fortios', 'fortimanager', 'fortianalyzer'],
+        subProducts: [
+            { id: 'fortigate', name: 'FortiGate', type: 'Firewall' },
+            { id: 'fortios', name: 'FortiOS', type: 'Software' },
+            { id: 'fortimanager', name: 'FortiManager', type: 'Management' },
+            { id: 'fortianalyzer', name: 'FortiAnalyzer', type: 'Analytics' }
+        ]
+    },
+    {
+        id: 'paloalto',
+        name: 'Palo Alto Networks',
+        vendor: 'Palo Alto Networks',
+        category: ASSET_CATEGORIES.NETWORK_SECURITY,
+        vendorGroup: VENDOR_GROUPS.PALO_ALTO,
+        description: 'Palo Alto Networks security products including PAN-OS, Cortex XDR, GlobalProtect, and Panorama',
+        cpeVendor: 'paloaltonetworks',
+        cpeProducts: ['pan-os', 'cortex_xdr', 'globalprotect', 'panorama'],
+        keywords: ['palo alto networks', 'pan-os', 'cortex xdr', 'globalprotect', 'panorama'],
+        subProducts: [
+            { id: 'pan-os', name: 'PAN-OS', type: 'Software' },
+            { id: 'cortex-xdr', name: 'Cortex XDR', type: 'XDR' },
+            { id: 'globalprotect', name: 'GlobalProtect', type: 'VPN' },
+            { id: 'panorama', name: 'Panorama', type: 'Management' }
+        ]
+    },
+    {
+        id: 'juniper',
+        name: 'Juniper',
+        vendor: 'Juniper Networks',
+        category: ASSET_CATEGORIES.NETWORK_SECURITY,
+        vendorGroup: VENDOR_GROUPS.JUNIPER,
+        description: 'Juniper Networks products including Junos OS, SRX, and MX series',
+        cpeVendor: 'juniper',
+        cpeProducts: ['junos', 'junos_os', 'srx', 'mx'],
+        keywords: ['juniper networks', 'junos', 'juniper srx', 'juniper mx'],
+        subProducts: [
+            { id: 'junos', name: 'Junos OS', type: 'Software' },
+            { id: 'srx', name: 'SRX Series', type: 'Firewall' },
+            { id: 'mx', name: 'MX Series', type: 'Router' }
+        ]
+    },
+
+    // ==========================================
+    // CONTAINERS
+    // ==========================================
+    {
+        id: 'docker',
+        name: 'Docker',
+        vendor: 'Docker',
+        category: ASSET_CATEGORIES.CONTAINERS,
+        vendorGroup: VENDOR_GROUPS.DOCKER,
+        description: 'Docker container platform',
+        cpeVendor: 'docker',
+        cpeProducts: ['docker', 'docker_engine', 'docker_desktop'],
+        keywords: ['docker', 'docker engine', 'docker desktop'],
+        subProducts: [
+            { id: 'docker-engine', name: 'Docker Engine', type: 'Runtime' },
+            { id: 'docker-desktop', name: 'Docker Desktop', type: 'Desktop App' }
+        ]
+    },
+    {
+        id: 'kubernetes',
+        name: 'Kubernetes',
+        vendor: 'Kubernetes',
+        category: ASSET_CATEGORIES.CONTAINERS,
+        vendorGroup: VENDOR_GROUPS.KUBERNETES,
+        description: 'Kubernetes container orchestration platform',
+        cpeVendor: 'kubernetes',
+        cpeProducts: ['kubernetes'],
+        keywords: ['kubernetes', 'k8s'],
+        subProducts: [
+            { id: 'k8s-core', name: 'Kubernetes Core', type: 'Orchestrator' }
+        ]
     }
 ];
 

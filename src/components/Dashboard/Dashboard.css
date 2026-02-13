@@ -227,6 +227,53 @@
     max-width: 400px;
 }
 
+/* SLA Summary Row */
+.sla-summary-row {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.sla-summary-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    flex: 1;
+    min-width: 180px;
+}
+
+.sla-summary-card.breached {
+    background: var(--severity-critical-bg);
+    color: var(--severity-critical);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.sla-summary-card.approaching {
+    background: var(--severity-high-bg);
+    color: var(--severity-high);
+    border-color: rgba(249, 115, 22, 0.2);
+}
+
+.sla-summary-card.acknowledged {
+    background: var(--severity-info-bg);
+    color: var(--severity-info);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.sla-summary-value {
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+}
+
+.sla-summary-label {
+    font-size: var(--text-xs);
+    opacity: 0.8;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .dashboard {

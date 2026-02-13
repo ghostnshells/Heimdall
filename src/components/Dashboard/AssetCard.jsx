@@ -10,7 +10,11 @@ import {
     Globe,
     Tv,
     Battery,
-    CheckCircle
+    CheckCircle,
+    Monitor,
+    Cloud,
+    Container,
+    ShieldAlert
 } from 'lucide-react';
 import { ASSET_CATEGORIES } from '../../data/assets';
 import './AssetCard.css';
@@ -29,7 +33,11 @@ const categoryIcons = {
     [ASSET_CATEGORIES.SECURITY]: Lock,
     [ASSET_CATEGORIES.COLLABORATION]: MessageSquare,
     [ASSET_CATEGORIES.BROWSERS]: Globe,
-    [ASSET_CATEGORIES.AV_CONTROL]: Tv
+    [ASSET_CATEGORIES.AV_CONTROL]: Tv,
+    [ASSET_CATEGORIES.LINUX_DISTROS]: Monitor,
+    [ASSET_CATEGORIES.CLOUD_PLATFORMS]: Cloud,
+    [ASSET_CATEGORIES.NETWORK_SECURITY]: ShieldAlert,
+    [ASSET_CATEGORIES.CONTAINERS]: Container
 };
 
 const AssetCard = ({ asset, vulnCounts = {}, onClick, isSelected }) => {

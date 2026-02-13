@@ -9,7 +9,7 @@ const redis = new Redis({
 
 const CACHE_TTL = 7200; // 2 hours in seconds (safety margin over 50-min refresh cycle)
 const BATCH_SIZE = 4;
-const TOTAL_BATCHES = 5; // ceil(19 assets / 4)
+const TOTAL_BATCHES = 7; // ceil(26 assets / 4)
 
 /**
  * Get assembled vulnerability data for a time range

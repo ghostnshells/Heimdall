@@ -766,6 +766,126 @@ const PRODUCT_VALIDATORS = {
         const hasExcludedProduct = explicitExclusions.some(term => desc.includes(term));
 
         return (hasFirefoxCPE || descHasFirefoxContext) && !hasExcludedProduct;
+    },
+
+    // Ubuntu: Must be for Canonical Ubuntu Linux
+    'ubuntu': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasUbuntuCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':canonical:'));
+        const descHasContext = desc.includes('ubuntu');
+        const exclusions = ['mint', 'kubuntu', 'lubuntu'];
+        const hasExcluded = exclusions.some(t => desc.includes(t) && !desc.includes('ubuntu'));
+        return (hasUbuntuCPE || descHasContext) && !hasExcluded;
+    },
+
+    // RHEL: Must be for Red Hat Enterprise Linux
+    'rhel': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasRHELCPE = vuln.affectedProducts?.some(p =>
+            p.cpe?.includes(':redhat:enterprise_linux')
+        );
+        const descHasContext = desc.includes('red hat enterprise linux') || desc.includes('rhel');
+        const exclusions = ['fedora', 'centos stream'];
+        const hasExcluded = exclusions.some(t => desc.includes(t)) && !descHasContext && !hasRHELCPE;
+        return (hasRHELCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Debian: Must be for Debian Linux
+    'debian': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasDebianCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':debian:'));
+        const descHasContext = desc.includes('debian');
+        return hasDebianCPE || descHasContext;
+    },
+
+    // AWS: Must be for Amazon Web Services products
+    'aws': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasAWSCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':amazon:'));
+        const descHasContext = desc.includes('amazon web services') || desc.includes('aws') ||
+            desc.includes('amazon linux') || desc.includes('amazon ec2') || desc.includes('amazon s3');
+        const exclusions = ['amazon kindle', 'amazon fire', 'amazon alexa', 'amazon ring'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasAWSCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Azure Cloud: Must be for Azure cloud services (not general Microsoft)
+    'azure-cloud': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasAzureCPE = vuln.affectedProducts?.some(p =>
+            p.cpe?.includes(':microsoft:azure')
+        );
+        const descHasContext = desc.includes('azure') && (
+            desc.includes('microsoft') || desc.includes('cloud') ||
+            desc.includes('active directory') || desc.includes('devops')
+        );
+        return hasAzureCPE || descHasContext;
+    },
+
+    // Google Cloud: Must be for GCP, not Chrome/Android
+    'google-cloud': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasGCPCPE = vuln.affectedProducts?.some(p =>
+            p.cpe?.includes(':google:cloud_platform') || p.cpe?.includes(':google:cloud_sdk')
+        );
+        const descHasContext = desc.includes('google cloud') || desc.includes('gcp') ||
+            desc.includes('cloud sdk');
+        const exclusions = ['chrome', 'android', 'pixel', 'chromium'];
+        const hasExcluded = exclusions.some(t => desc.includes(t)) && !descHasContext;
+        return hasGCPCPE || descHasContext;
+    },
+
+    // Fortinet: Must be for Fortinet products
+    'fortinet': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasFortinetCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':fortinet:'));
+        const descHasContext = desc.includes('fortinet') || desc.includes('fortigate') ||
+            desc.includes('fortios') || desc.includes('fortimanager') || desc.includes('fortianalyzer');
+        const exclusions = ['watchguard', 'palo alto', 'checkpoint', 'cisco asa'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasFortinetCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Palo Alto Networks: Must be for PAN products
+    'paloalto': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasPANCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':paloaltonetworks:'));
+        const descHasContext = desc.includes('palo alto') || desc.includes('pan-os') ||
+            desc.includes('cortex xdr') || desc.includes('globalprotect') || desc.includes('panorama');
+        const exclusions = ['fortinet', 'watchguard', 'checkpoint', 'cisco asa'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasPANCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Juniper: Must be for Juniper Networks products
+    'juniper': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasJuniperCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':juniper:'));
+        const descHasContext = desc.includes('juniper') || desc.includes('junos');
+        const exclusions = ['cisco', 'fortinet', 'palo alto', 'arista'];
+        const hasExcluded = exclusions.some(t => desc.includes(t));
+        return (hasJuniperCPE || descHasContext) && !hasExcluded;
+    },
+
+    // Docker: Must be for Docker container products
+    'docker': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasDockerCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':docker:'));
+        const descHasContext = desc.includes('docker engine') || desc.includes('docker desktop') ||
+            (desc.includes('docker') && (desc.includes('container') || desc.includes('daemon') || desc.includes('moby')));
+        const exclusions = ['podman', 'containerd', 'cri-o'];
+        const hasExcluded = exclusions.some(t => desc.includes(t)) && !hasDockerCPE;
+        return hasDockerCPE || descHasContext;
+    },
+
+    // Kubernetes: Must be for Kubernetes orchestration
+    'kubernetes': (vuln) => {
+        const desc = vuln.description?.toLowerCase() || '';
+        const hasK8sCPE = vuln.affectedProducts?.some(p => p.cpe?.includes(':kubernetes:'));
+        const descHasContext = desc.includes('kubernetes') || desc.includes('k8s');
+        const exclusions = ['openshift', 'rancher', 'docker swarm'];
+        const hasExcluded = exclusions.some(t => desc.includes(t)) && !descHasContext && !hasK8sCPE;
+        return (hasK8sCPE || descHasContext) && !hasExcluded;
     }
 };
 

@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Menu, Newspaper } from 'lucide-react';
+import { Menu, Newspaper, LogOut } from 'lucide-react';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import AlertsList from './components/AlertsList/AlertsList';
 import NewsFeed from './components/NewsFeed';
+import LoginPage from './components/Auth/LoginPage';
 import {
     fetchAllVulnerabilities,
     getVulnerabilityStats,
     getVulnCountsByAsset,
     clearCache
 } from './services/vulnerabilityService';
+import {
+    isAuthenticated,
+    getStoredUser,
+    login as authLogin,
+    signup as authSignup,
+    logout as authLogout
+} from './services/authService';
 
 function App() {
     // State
@@ -29,6 +37,11 @@ function App() {
     const [isNewsFeedCollapsed, setIsNewsFeedCollapsed] = useState(true); // Collapsed by default
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isMobileNewsOpen, setIsMobileNewsOpen] = useState(false);
+
+    // Auth state
+    const [user, setUser] = useState(getStoredUser());
+    const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     // Vendor view mode state
     const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
@@ -56,6 +69,26 @@ function App() {
     // Handle subcategory selection
     const handleSubcategorySelect = (subcat) => {
         setSelectedSubcategory(subcat);
+    };
+
+    // Handle login/signup
+    const handleLogin = async (email, password, isSignupMode) => {
+        if (isSignupMode) {
+            const userData = await authSignup(email, password);
+            setUser(userData);
+        } else {
+            const userData = await authLogin(email, password);
+            setUser(userData);
+        }
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+    };
+
+    // Handle logout
+    const handleLogout = async () => {
+        await authLogout();
+        setUser(null);
+        setIsLoggedIn(false);
     };
 
     // Fetch vulnerabilities from live NVD API
@@ -103,6 +136,18 @@ function App() {
         fetchData(true);
     };
 
+    // Lifecycle state
+    const [vulnStatuses, setVulnStatuses] = useState({});
+    const [slaConfig, setSlaConfig] = useState(null);
+
+    // Handle status change from lifecycle components
+    const handleStatusChange = (cveId, newStatus) => {
+        setVulnStatuses(prev => ({
+            ...prev,
+            [cveId]: { status: newStatus, updatedAt: new Date().toISOString() }
+        }));
+    };
+
     // Handle asset click
     const handleAssetClick = (asset) => {
         setSelectedAsset(asset);
@@ -135,13 +180,24 @@ function App() {
                     <img src={`${import.meta.env.BASE_URL}heimdall_prod_logo.png`} alt="Heimdall" className="mobile-logo-img" />
                     <span className="mobile-logo-text">HEIMDALL</span>
                 </div>
-                <button
-                    className="mobile-news-btn"
-                    onClick={() => setIsMobileNewsOpen(!isMobileNewsOpen)}
-                    aria-label="Toggle news"
-                >
-                    <Newspaper size={20} />
-                </button>
+                <div className="mobile-header-right">
+                    {isLoggedIn ? (
+                        <button className="mobile-auth-btn" onClick={handleLogout} aria-label="Logout" title={user?.email}>
+                            <LogOut size={18} />
+                        </button>
+                    ) : (
+                        <button className="mobile-auth-btn" onClick={() => setShowLoginModal(true)} aria-label="Sign in">
+                            Sign In
+                        </button>
+                    )}
+                    <button
+                        className="mobile-news-btn"
+                        onClick={() => setIsMobileNewsOpen(!isMobileNewsOpen)}
+                        aria-label="Toggle news"
+                    >
+                        <Newspaper size={20} />
+                    </button>
+                </div>
             </div>
 
             <div
@@ -190,6 +246,9 @@ function App() {
                     viewMode={viewMode}
                     selectedVendor={selectedVendor}
                     selectedSubcategory={selectedSubcategory}
+                    isAuthenticated={isLoggedIn}
+                    vulnStatuses={vulnStatuses}
+                    slaConfig={slaConfig}
                 />
 
                 <aside className={`news-panel ${isNewsFeedCollapsed ? 'collapsed' : ''}`}>
@@ -205,6 +264,10 @@ function App() {
                 vulnerabilities={getSelectedAssetVulns()}
                 isOpen={isPanelOpen}
                 onClose={handleClosePanel}
+                isAuthenticated={isLoggedIn}
+                slaConfig={slaConfig}
+                vulnStatuses={vulnStatuses}
+                onStatusChange={handleStatusChange}
             />
 
             {/* Mobile news overlay */}
@@ -219,6 +282,15 @@ function App() {
                     className="mobile-news-backdrop"
                     onClick={() => setIsMobileNewsOpen(false)}
                 />
+            )}
+
+            {/* Login Modal */}
+            {showLoginModal && !isLoggedIn && (
+                <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <LoginPage onLogin={handleLogin} />
+                    </div>
+                </div>
             )}
 
             {error && (

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Shield, AlertTriangle, CheckCircle2, Building2 } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Shield, AlertTriangle, CheckCircle2, Building2, Clock } from 'lucide-react';
 import AssetCard, { AssetCardSkeleton } from './AssetCard';
 import TimeRangeToggle from '../TimeRangeToggle/TimeRangeToggle';
 import VulnerabilityChart from './VulnerabilityChart';
@@ -10,7 +10,69 @@ import {
     getAssetsByVendorAndSubcategory,
     getSubcategoriesForVendor
 } from '../../data/assets';
+import { isSLABreached, getSLADaysRemaining } from '../../services/lifecycleService';
 import './Dashboard.css';
+
+const SLASummary = ({ vulnerabilities, vulnStatuses, slaConfig }) => {
+    const summary = useMemo(() => {
+        let breached = 0;
+        let approaching = 0;
+        let acknowledged = 0;
+
+        vulnerabilities.forEach(vuln => {
+            const status = vulnStatuses[vuln.id]?.status || 'new';
+            const terminalStatuses = ['patched', 'mitigated', 'accepted_risk', 'false_positive'];
+            if (terminalStatuses.includes(status)) return;
+
+            if (isSLABreached(vuln.published, vuln.severity, status, slaConfig)) {
+                breached++;
+            } else {
+                const daysLeft = getSLADaysRemaining(vuln.published, vuln.severity, slaConfig);
+                if (daysLeft <= 7) approaching++;
+            }
+
+            if (status === 'acknowledged' || status === 'in_progress') {
+                acknowledged++;
+            }
+        });
+
+        return { breached, approaching, acknowledged };
+    }, [vulnerabilities, vulnStatuses, slaConfig]);
+
+    if (summary.breached === 0 && summary.approaching === 0 && summary.acknowledged === 0) return null;
+
+    return (
+        <div className="sla-summary-row">
+            {summary.breached > 0 && (
+                <div className="sla-summary-card breached">
+                    <AlertTriangle size={16} />
+                    <div>
+                        <div className="sla-summary-value">{summary.breached}</div>
+                        <div className="sla-summary-label">SLA Breached</div>
+                    </div>
+                </div>
+            )}
+            {summary.approaching > 0 && (
+                <div className="sla-summary-card approaching">
+                    <Clock size={16} />
+                    <div>
+                        <div className="sla-summary-value">{summary.approaching}</div>
+                        <div className="sla-summary-label">Approaching Deadline</div>
+                    </div>
+                </div>
+            )}
+            {summary.acknowledged > 0 && (
+                <div className="sla-summary-card acknowledged">
+                    <CheckCircle2 size={16} />
+                    <div>
+                        <div className="sla-summary-value">{summary.acknowledged}</div>
+                        <div className="sla-summary-label">In Progress</div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Dashboard = ({
     selectedCategory,
@@ -25,7 +87,10 @@ const Dashboard = ({
     selectedAsset,
     viewMode = 'category',
     selectedVendor,
-    selectedSubcategory
+    selectedSubcategory,
+    isAuthenticated = false,
+    vulnStatuses = {},
+    slaConfig
 }) => {
     // Get assets based on view mode
     const getFilteredAssets = () => {
@@ -116,6 +181,11 @@ const Dashboard = ({
                     <div className="stat-card-value">{stats?.low || 0}</div>
                 </div>
             </div>
+
+            {/* SLA Summary (only when authenticated) */}
+            {isAuthenticated && vulnerabilities?.all && slaConfig && (
+                <SLASummary vulnerabilities={vulnerabilities.all} vulnStatuses={vulnStatuses} slaConfig={slaConfig} />
+            )}
 
             {/* Vulnerability Timeline Chart */}
             {!isLoading && vulnerabilities && (

@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
         const metadata = await getCacheMetadata();
 
-        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+        res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
         res.json({
             success: true,
             data,
