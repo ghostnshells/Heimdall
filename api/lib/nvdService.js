@@ -2,6 +2,9 @@
 // Fetches vulnerability data from NVD and CISA APIs
 
 import { ASSETS } from './assets.js';
+import { enrichWithEPSS } from './epssService.js';
+import { enrichWithAttackTechniques } from './attackMapping.js';
+import { enrichWithThreatActors } from './threatActorService.js';
 
 // API Configuration
 const NVD_API_BASE = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
@@ -1059,11 +1062,14 @@ export async function fetchAllVulnerabilities(timeRange = '7d') {
             const cisaOnly = cisaVulns.filter(v => !nvdIds.has(v.id));
             merged.push(...cisaOnly);
 
-            // Sort per-asset vulnerabilities by most recent date (published or lastModified)
+            // Sort and enrich per-asset vulnerabilities
             const sortedMerged = sortByMostRecentDate(merged);
+            const withAttack = enrichWithAttackTechniques(sortedMerged);
+            const withEPSS = await enrichWithEPSS(withAttack);
+            const enriched = enrichWithThreatActors(withEPSS);
 
-            vulnerabilities[asset.id] = sortedMerged;
-            allVulns.push(...sortedMerged);
+            vulnerabilities[asset.id] = enriched;
+            allVulns.push(...enriched);
 
             console.log(`  Found ${merged.length} vulnerabilities`);
         } catch (error) {

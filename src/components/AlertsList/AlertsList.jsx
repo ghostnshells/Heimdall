@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers, Zap, Target, Skull } from 'lucide-react';
+import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers, Zap, Target, Skull, Users } from 'lucide-react';
 import { matchVulnToSubProducts } from '../../data/assets';
 import StatusBadge from '../Lifecycle/StatusBadge';
 import SLAIndicator from '../Lifecycle/SLAIndicator';
@@ -454,6 +454,22 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose, isAuthentica
                                 >
                                     {tech.id}
                                 </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Threat Actor Association */}
+                    {vuln.threatActors && vuln.threatActors.length > 0 && (
+                        <div className="threat-actors">
+                            <Users size={12} />
+                            {vuln.threatActors.map((actor, idx) => (
+                                <span
+                                    key={idx}
+                                    className="threat-actor-badge"
+                                    title={`Source: ${actor.source}`}
+                                >
+                                    {actor.name}
+                                </span>
                             ))}
                         </div>
                     )}

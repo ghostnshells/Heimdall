@@ -18,6 +18,7 @@ import {
 } from '../lib/redis.js';
 import { enrichWithEPSS } from '../lib/epssService.js';
 import { enrichWithAttackTechniques } from '../lib/attackMapping.js';
+import { enrichWithThreatActors } from '../lib/threatActorService.js';
 
 const TIME_RANGES = ['24h', '7d', '30d', '90d', '119d'];
 
@@ -88,11 +89,12 @@ export default async function handler(req, res) {
 
                     // Enrich with EPSS scores (async, batched API call)
                     const enriched = await enrichWithEPSS(withAttack);
+                    const withThreatActors = enrichWithThreatActors(enriched);
 
                     // Store per-asset results in Redis
-                    await setAssetVulns(asset.id, timeRange, enriched);
+                    await setAssetVulns(asset.id, timeRange, withThreatActors);
 
-                    console.log(`[Cron] ${asset.name} (${timeRange}): ${enriched.length} vulnerabilities`);
+                    console.log(`[Cron] ${asset.name} (${timeRange}): ${withThreatActors.length} vulnerabilities`);
                 } catch (error) {
                     console.error(`[Cron] Error for ${asset.name} (${timeRange}):`, error.message);
                     // Store empty array so assembly still works

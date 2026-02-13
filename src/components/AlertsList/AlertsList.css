@@ -766,6 +766,36 @@
     text-decoration: none;
 }
 
+/* Threat Actor Association */
+.threat-actors {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(225, 29, 72, 0.05);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(225, 29, 72, 0.2);
+}
+
+.threat-actors > svg {
+    color: #e11d48;
+    flex-shrink: 0;
+}
+
+.threat-actor-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: var(--font-semibold);
+    color: #be123c;
+    background: rgba(225, 29, 72, 0.12);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.02em;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .alerts-panel {
