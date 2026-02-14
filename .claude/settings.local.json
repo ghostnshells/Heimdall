@@ -9,7 +9,9 @@
       "Bash(wc:*)",
       "Bash(npx vite build:*)",
       "Bash(./scripts/diagnose-cache.sh:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)"
     ]
   }
 }
