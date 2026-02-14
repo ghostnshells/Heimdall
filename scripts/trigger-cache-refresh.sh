@@ -38,6 +38,15 @@ for i in $(seq 0 $((TOTAL_BATCHES - 1))); do
 
     echo "   Response: $RESPONSE"
 
+    # Check for errors in response
+    if echo "$RESPONSE" | grep -q '"error"'; then
+        echo "   ⚠️  ERROR detected in response!"
+    elif echo "$RESPONSE" | grep -q '"success":true'; then
+        echo "   ✓ Batch successful"
+    else
+        echo "   ⚠️  Unexpected response format"
+    fi
+
     # Wait 2 seconds between requests to avoid rate limiting
     if [ $i -lt $((TOTAL_BATCHES - 1)) ]; then
         echo "   Waiting 2 seconds..."

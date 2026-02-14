@@ -14,7 +14,8 @@ export default async function handler(req, res) {
         if (!data) {
             return res.status(503).json({
                 error: 'Cache not ready',
-                message: 'Vulnerability data is still being fetched. Please try again in a few minutes.'
+                message: 'Vulnerability data is still being fetched. Please try again in a few minutes.',
+                success: false
             });
         }
 
@@ -32,6 +33,11 @@ export default async function handler(req, res) {
         });
     } catch (error) {
         console.error('Error fetching vulnerabilities:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 }

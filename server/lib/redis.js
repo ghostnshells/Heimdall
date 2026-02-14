@@ -27,18 +27,29 @@ function normalizeEnvValue(raw, keyName) {
 const redisUrl = normalizeEnvValue(process.env.UPSTASH_REDIS_REST_URL, 'UPSTASH_REDIS_REST_URL');
 const redisToken = normalizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN, 'UPSTASH_REDIS_REST_TOKEN');
 
-if (!redisUrl || !redisUrl.startsWith('https://')) {
-    throw new Error('Invalid UPSTASH_REDIS_REST_URL. Set it to a raw https URL value only.');
+// Validate environment variables
+function validateRedisEnv() {
+    if (!redisUrl || !redisUrl.startsWith('https://')) {
+        throw new Error(`Invalid UPSTASH_REDIS_REST_URL. Got: "${redisUrl?.substring(0, 20)}..." - Set it to a raw https URL value only.`);
+    }
+    if (!redisToken) {
+        throw new Error('Missing UPSTASH_REDIS_REST_TOKEN. Set it to the raw token value only.');
+    }
 }
 
-if (!redisToken) {
-    throw new Error('Missing UPSTASH_REDIS_REST_TOKEN. Set it to the raw token value only.');
+// Only validate and create Redis client if env vars are present
+let redis;
+try {
+    validateRedisEnv();
+    redis = new Redis({
+        url: redisUrl,
+        token: redisToken,
+    });
+} catch (error) {
+    console.error('[Redis] Configuration error:', error.message);
+    // Don't throw during import - let individual function calls handle the error
+    redis = null;
 }
-
-const redis = new Redis({
-    url: redisUrl,
-    token: redisToken,
-});
 
 const CACHE_TTL = 7200; // 2 hours in seconds (safety margin over 50-min refresh cycle)
 const BATCH_SIZE = 4;
@@ -48,6 +59,9 @@ const TOTAL_BATCHES = 7; // ceil(26 assets / 4)
  * Get assembled vulnerability data for a time range
  */
 export async function getVulnData(timeRange) {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     const data = await redis.get(`vuln:all:${timeRange}`);
     return data || null;
 }
@@ -56,6 +70,9 @@ export async function getVulnData(timeRange) {
  * Get cache metadata (last updated times, etc.)
  */
 export async function getCacheMetadata() {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     const metadata = await redis.get('vuln:metadata');
     return metadata || { lastUpdated: {}, lastFullRefresh: null };
 }
@@ -64,6 +81,9 @@ export async function getCacheMetadata() {
  * Store per-asset vulnerability results
  */
 export async function setAssetVulns(assetId, timeRange, data) {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     await redis.set(`vuln:asset:${assetId}:${timeRange}`, data, { ex: CACHE_TTL });
 }
 
@@ -71,6 +91,9 @@ export async function setAssetVulns(assetId, timeRange, data) {
  * Get per-asset vulnerability results
  */
 export async function getAssetVulns(assetId, timeRange) {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     return await redis.get(`vuln:asset:${assetId}:${timeRange}`);
 }
 
@@ -78,6 +101,10 @@ export async function getAssetVulns(assetId, timeRange) {
  * Assemble full cache from all per-asset keys
  */
 export async function assembleFullCache(timeRange, assets) {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
+
     const byAsset = {};
     const allVulns = [];
 
@@ -126,6 +153,9 @@ export async function assembleFullCache(timeRange, assets) {
  * Get current batch index for rotating asset refresh
  */
 export async function getBatchIndex() {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     const index = await redis.get('refresh:batchIndex');
     return index ?? 0;
 }
@@ -134,6 +164,9 @@ export async function getBatchIndex() {
  * Increment and wrap batch index
  */
 export async function incrementBatchIndex() {
+    if (!redis) {
+        throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
+    }
     const current = await getBatchIndex();
     const next = (current + 1) % TOTAL_BATCHES;
     await redis.set('refresh:batchIndex', next);
