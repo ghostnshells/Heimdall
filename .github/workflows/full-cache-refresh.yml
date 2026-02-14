@@ -21,14 +21,9 @@ jobs:
             BATCH=$((BATCH + 1))
             echo "⏳ Triggering batch $BATCH/7..."
 
-            if [ -n "${{ secrets.CRON_SECRET }}" ]; then
-              RESPONSE=$(curl -s -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
-                -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-                -H "Content-Type: application/json")
-            else
-              RESPONSE=$(curl -s -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
-                -H "Content-Type: application/json")
-            fi
+            # Using bypass mode (ALLOW_CRON_BYPASS=true must be set in Vercel)
+            RESPONSE=$(curl -s -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
+              -H "Content-Type: application/json")
 
             echo "   Response: $RESPONSE"
 

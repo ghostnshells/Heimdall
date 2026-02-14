@@ -23,24 +23,13 @@ jobs:
           # We need 7 runs to process all 26 assets
           # This workflow runs hourly, so it will take 7 hours for a full refresh
 
-          if [ -n "${{ secrets.CRON_SECRET }}" ]; then
-            # With CRON_SECRET (recommended)
-            curl -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -H "Content-Type: application/json" \
-              --fail \
-              --show-error \
-              --silent \
-              --output response.json
-          else
-            # Without CRON_SECRET (if not set in secrets)
-            curl -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
-              -H "Content-Type: application/json" \
-              --fail \
-              --show-error \
-              --silent \
-              --output response.json
-          fi
+          # Using bypass mode (ALLOW_CRON_BYPASS=true must be set in Vercel)
+          curl -X GET "${{ secrets.VERCEL_PRODUCTION_URL }}/api/cron/refresh" \
+            -H "Content-Type: application/json" \
+            --fail \
+            --show-error \
+            --silent \
+            --output response.json
 
           echo "Response:"
           cat response.json | jq '.' || cat response.json
