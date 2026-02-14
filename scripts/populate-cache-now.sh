@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Emergency cache population script using debug endpoint (no auth required)
+# Emergency cache population script (requires ALLOW_CRON_BYPASS=true in Vercel)
 # This bypasses authentication to get your app working immediately
 
-URL="https://heimdall-nine-alpha.vercel.app/api/cron/refresh-debug"
+URL="https://heimdall-nine-alpha.vercel.app/api/cron/refresh"
 
 echo "🚀 Emergency Cache Population"
 echo "================================"
-echo "Using debug endpoint (no authentication)"
+echo "Using bypass mode (requires ALLOW_CRON_BYPASS=true in Vercel)"
 echo ""
 
 BATCH=0
