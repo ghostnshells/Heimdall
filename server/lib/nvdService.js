@@ -963,10 +963,12 @@ async function fetchVulnerabilitiesForAsset(asset, startDate, endDate) {
         results.push(...keywordResults);
     }
 
-    // Vendor-level CPE fallback: catches CVEs where the description doesn't mention
-    // the vendor name at all (e.g., some Veeam CVEs just say "A vulnerability that enables..."
-    // without saying "Veeam"). This is a single API call per asset (not per-product).
-    if (asset.cpeVendor) {
+    // Vendor-level CPE fallback (opt-in only via useCpeFallback flag):
+    // For small vendors like Veeam, some CVEs don't mention the vendor name in the
+    // description at all. A vendor-level CPE search catches these.
+    // NOT safe for large vendors (Microsoft, Cisco, Google) — the wildcard CPE search
+    // returns tens of thousands of results and causes NVD API timeouts.
+    if (asset.useCpeFallback && asset.cpeVendor) {
         console.log(`[NVD] Vendor CPE fallback for ${asset.name}: ${asset.cpeVendor}:*`);
         const cpeResults = await searchNVDByCPE(asset.cpeVendor, '*', startDate, endDate, 2000);
         results.push(...cpeResults);

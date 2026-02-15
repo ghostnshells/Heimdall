@@ -122,7 +122,8 @@ export const ASSETS = [
         vendor: 'WatchGuard',
         cpeVendor: 'watchguard',
         cpeProducts: ['firebox', 'fireware', 'mobile_vpn', 'authpoint'],
-        keywords: ['watchguard', 'firebox', 'fireware', 'watchguard vpn']
+        keywords: ['watchguard', 'firebox', 'fireware', 'watchguard vpn'],
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -135,7 +136,8 @@ export const ASSETS = [
         cpeVendor: 'tripp_lite',
         cpeProducts: ['smartpro', 'smart_online', 'smartonline', 'poweralert'],
         keywords: ['tripp lite'],
-        preferKeywordSearch: true
+        preferKeywordSearch: true,
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -147,7 +149,8 @@ export const ASSETS = [
         vendor: 'SolarWinds',
         cpeVendor: 'solarwinds',
         cpeProducts: ['orion', 'orion_platform', 'network_performance_monitor', 'server_and_application_monitor'],
-        keywords: ['solarwinds', 'orion platform', 'solarwinds npm', 'solarwinds sam']
+        keywords: ['solarwinds', 'orion platform', 'solarwinds npm', 'solarwinds sam'],
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -159,7 +162,8 @@ export const ASSETS = [
         vendor: 'ConnectWise',
         cpeVendor: 'connectwise',
         cpeProducts: ['screenconnect', 'automate', 'control', 'manage'],
-        keywords: ['connectwise', 'screenconnect', 'connectwise automate', 'connectwise manage']
+        keywords: ['connectwise', 'screenconnect', 'connectwise automate', 'connectwise manage'],
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -184,7 +188,8 @@ export const ASSETS = [
         cpeVendor: 'veeam',
         cpeProducts: ['backup_and_replication', 'veeam_backup_\\&_replication', 'one', 'agent'],
         keywords: ['veeam'],
-        preferKeywordSearch: true
+        preferKeywordSearch: true,
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -196,7 +201,8 @@ export const ASSETS = [
         vendor: 'Zerto',
         cpeVendor: 'zerto',
         cpeProducts: ['virtual_replication', 'zerto'],
-        keywords: ['zerto', 'zerto virtual replication']
+        keywords: ['zerto', 'zerto virtual replication'],
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -208,7 +214,8 @@ export const ASSETS = [
         vendor: 'BitDefender',
         cpeVendor: 'bitdefender',
         cpeProducts: ['gravityzone', 'endpoint_security', 'total_security'],
-        keywords: ['bitdefender', 'gravityzone']
+        keywords: ['bitdefender', 'gravityzone'],
+        useCpeFallback: true
     },
 
     // ==========================================
@@ -260,7 +267,8 @@ export const ASSETS = [
         vendor: 'Crestron',
         cpeVendor: 'crestron',
         cpeProducts: ['crestron', 'dm', 'nvx', 'flex'],
-        keywords: ['crestron', 'crestron av', 'crestron control']
+        keywords: ['crestron', 'crestron av', 'crestron control'],
+        useCpeFallback: true
     },
 
     // ==========================================
