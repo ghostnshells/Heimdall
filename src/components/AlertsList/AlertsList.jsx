@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers, Zap, Target, Skull, Users } from 'lucide-react';
+import { X, ArrowLeft, Calendar, Clock, ExternalLink, Shield, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Wrench, Code, Lightbulb, FileText, Link, Layers, Zap, Target, Skull, Users } from 'lucide-react';
 import { matchVulnToSubProducts } from '../../data/assets';
 import StatusBadge from '../Lifecycle/StatusBadge';
 import SLAIndicator from '../Lifecycle/SLAIndicator';
@@ -728,12 +728,17 @@ const AlertsList = ({ asset, vulnerabilities = [], isOpen, onClose, isAuthentica
             />
             <div className={`alerts-panel ${isOpen ? 'open' : ''}`}>
                 <div className="alerts-panel-header">
-                    <div>
-                        <h2 className="alerts-panel-title">{asset?.name || 'Vulnerabilities'}</h2>
-                        <p className="alerts-panel-subtitle">
-                            {filteredVulnerabilities.length} of {vulnerabilities.length} {vulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}
-                            {statusFilter !== 'all' && ` (${statusFilter.replace('_', ' ')})`}
-                        </p>
+                    <div className="alerts-panel-title-group">
+                        <button className="alerts-panel-back" onClick={onClose} aria-label="Close panel">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h2 className="alerts-panel-title">{asset?.name || 'Vulnerabilities'}</h2>
+                            <p className="alerts-panel-subtitle">
+                                {filteredVulnerabilities.length} of {vulnerabilities.length} {vulnerabilities.length === 1 ? 'vulnerability' : 'vulnerabilities'}
+                                {statusFilter !== 'all' && ` (${statusFilter.replace('_', ' ')})`}
+                            </p>
+                        </div>
                     </div>
                     <div className="alerts-panel-actions">
                         {isAuthenticated && (
