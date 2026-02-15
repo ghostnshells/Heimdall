@@ -814,8 +814,14 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .alerts-overlay.visible {
+        z-index: 999;
+    }
+
     .alerts-panel {
         width: 100%;
+        top: 56px;
+        z-index: 1000;
     }
 
     .alerts-panel-header {

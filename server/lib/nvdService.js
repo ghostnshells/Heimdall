@@ -759,10 +759,8 @@ const PRODUCT_VALIDATORS = {
             p.cpe?.includes(':mozilla:firefox')
         );
 
-        const descHasFirefoxContext =
-            desc.includes('mozilla firefox') ||
-            desc.includes('firefox browser') ||
-            (desc.includes('firefox') && desc.includes('mozilla'));
+        // NVD descriptions say just "Firefox", not "Mozilla Firefox"
+        const descHasFirefoxContext = desc.includes('firefox');
 
         const explicitExclusions = [
             'chrome', 'edge', 'safari', 'opera', 'brave', 'vivaldi'
