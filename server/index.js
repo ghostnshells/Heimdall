@@ -109,7 +109,7 @@ app.get('*', (req, res) => {
 async function refreshCache() {
     console.log(`[${new Date().toISOString()}] Starting cache refresh...`);
 
-    const timeRanges = ['7d', '30d', '90d'];
+    const timeRanges = ['24h', '7d', '30d', '90d', '119d'];
 
     for (const timeRange of timeRanges) {
         try {

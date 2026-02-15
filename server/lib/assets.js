@@ -61,6 +61,7 @@ export const ASSETS = [
             'azure'
         ],
         keywords: [
+            'microsoft',
             'microsoft windows',
             'windows server',
             'microsoft exchange',
@@ -98,10 +99,10 @@ export const ASSETS = [
             'storeonce'
         ],
         keywords: [
+            'hewlett packard enterprise',
             'hpe proliant',
             'hpe nimble',
             'hpe alletra',
-            'hewlett packard enterprise',
             'hpe ilo',
             'integrated lights-out',
             'hpe oneview',
