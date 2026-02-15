@@ -11,7 +11,9 @@
       "Bash(./scripts/diagnose-cache.sh:*)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "WebFetch(domain:services.nvd.nist.gov)",
+      "WebSearch"
     ]
   }
 }

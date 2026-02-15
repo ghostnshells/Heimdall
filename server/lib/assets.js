@@ -98,7 +98,10 @@ export const ASSETS = [
             'oneview',
             'storeonce'
         ],
+        // keywords[0] must be the shortest unambiguous term — NVD requires ALL words to match
+        // 'hpe' catches CVEs that say "HPE" (common) while 'hewlett packard enterprise' misses them
         keywords: [
+            'hpe',
             'hewlett packard enterprise',
             'hpe proliant',
             'hpe nimble',
@@ -217,7 +220,9 @@ export const ASSETS = [
         vendor: 'Zoom Video Communications',
         cpeVendor: 'zoom',
         cpeProducts: ['meetings', 'zoom', 'zoom_client', 'workplace', 'rooms'],
-        keywords: ['zoom video communications', 'zoom meetings', 'zoom client']
+        // keywords[0] = 'zoom' — NVD descriptions say "Zoom Workplace Apps", never "Zoom Video Communications"
+        // 'zoom video communications' returned 0 NVD results; validator filters false positives
+        keywords: ['zoom', 'zoom workplace', 'zoom meetings', 'zoom client']
     },
 
     // ==========================================
@@ -241,7 +246,9 @@ export const ASSETS = [
         vendor: 'Mozilla',
         cpeVendor: 'mozilla',
         cpeProducts: ['firefox'],
-        keywords: ['mozilla firefox', 'firefox browser']
+        // keywords[0] = 'firefox' — NVD descriptions say "Firefox", not "Mozilla Firefox"
+        // 'mozilla firefox' missed 60% of Firefox CVEs; validator filters false positives
+        keywords: ['firefox', 'mozilla firefox', 'firefox browser']
     },
 
     // ==========================================
@@ -273,7 +280,9 @@ export const ASSETS = [
         vendor: 'Red Hat',
         cpeVendor: 'redhat',
         cpeProducts: ['enterprise_linux', 'enterprise_linux_server'],
-        keywords: ['red hat enterprise linux', 'rhel']
+        // keywords[0] = 'red hat' — short enough for NVD AND match, catches RHEL + OpenShift + Satellite
+        // 'red hat enterprise linux' (4 words) misses CVEs that just say "RHEL" or "Red Hat"
+        keywords: ['red hat', 'rhel', 'red hat enterprise linux']
     },
     {
         id: 'debian',
@@ -281,7 +290,7 @@ export const ASSETS = [
         vendor: 'Debian',
         cpeVendor: 'debian',
         cpeProducts: ['debian_linux'],
-        keywords: ['debian linux', 'debian']
+        keywords: ['debian', 'debian linux']
     },
 
     // ==========================================
@@ -293,7 +302,8 @@ export const ASSETS = [
         vendor: 'Amazon',
         cpeVendor: 'amazon',
         cpeProducts: ['aws', 'linux', 'ec2', 's3'],
-        keywords: ['amazon web services', 'aws', 'amazon linux']
+        // keywords[0] = 'aws' — many CVEs say "AWS" not "Amazon Web Services"
+        keywords: ['aws', 'amazon web services', 'amazon linux']
     },
     {
         id: 'azure-cloud',
@@ -301,7 +311,8 @@ export const ASSETS = [
         vendor: 'Microsoft',
         cpeVendor: 'microsoft',
         cpeProducts: ['azure', 'azure_active_directory', 'azure_devops_server'],
-        keywords: ['microsoft azure', 'azure cloud', 'azure active directory', 'azure devops']
+        // keywords[0] = 'azure' — most CVE descriptions just say "Azure"
+        keywords: ['azure', 'microsoft azure', 'azure cloud', 'azure active directory', 'azure devops']
     },
     {
         id: 'google-cloud',
@@ -309,7 +320,8 @@ export const ASSETS = [
         vendor: 'Google',
         cpeVendor: 'google',
         cpeProducts: ['cloud_platform', 'cloud_sdk'],
-        keywords: ['google cloud platform', 'gcp', 'google cloud sdk']
+        // keywords[0] = 'google cloud' — CVEs say "Google Cloud" not always the full "Google Cloud Platform"
+        keywords: ['google cloud', 'gcp', 'google cloud platform', 'google cloud sdk']
     },
 
     // ==========================================
@@ -329,7 +341,8 @@ export const ASSETS = [
         vendor: 'Palo Alto Networks',
         cpeVendor: 'paloaltonetworks',
         cpeProducts: ['pan-os', 'cortex_xdr', 'globalprotect', 'panorama'],
-        keywords: ['palo alto networks', 'pan-os', 'cortex xdr', 'globalprotect', 'panorama']
+        // keywords[0] = 'palo alto' — CVEs say "Palo Alto" (always together), validator filters
+        keywords: ['palo alto', 'pan-os', 'cortex xdr', 'globalprotect', 'panorama']
     },
     {
         id: 'juniper',
@@ -337,7 +350,8 @@ export const ASSETS = [
         vendor: 'Juniper Networks',
         cpeVendor: 'juniper',
         cpeProducts: ['junos', 'junos_os', 'srx', 'mx'],
-        keywords: ['juniper networks', 'junos', 'juniper srx', 'juniper mx']
+        // keywords[0] = 'juniper' — single word, catches all Juniper CVEs
+        keywords: ['juniper', 'junos', 'juniper networks', 'juniper srx', 'juniper mx']
     },
 
     // ==========================================

@@ -954,13 +954,22 @@ async function fetchVulnerabilitiesForAsset(asset, startDate, endDate) {
     const results = [];
 
     // Keyword-primary search: one broad keyword search per asset
-    // keywords[0] should be the broadest vendor term (e.g., 'microsoft', 'cisco')
-    // This replaces the old per-CPE-product loop which required ~15 API calls per asset
+    // keywords[0] should be the shortest unambiguous vendor/product term
+    // NVD keyword search requires ALL words to match, so shorter = broader coverage
     if (asset.keywords?.length > 0) {
         const keyword = asset.keywords[0];
         console.log(`[NVD] Keyword search for ${asset.name}: "${keyword}"`);
         const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate, 2000);
         results.push(...keywordResults);
+    }
+
+    // Vendor-level CPE fallback: catches CVEs where the description doesn't mention
+    // the vendor name at all (e.g., some Veeam CVEs just say "A vulnerability that enables..."
+    // without saying "Veeam"). This is a single API call per asset (not per-product).
+    if (asset.cpeVendor) {
+        console.log(`[NVD] Vendor CPE fallback for ${asset.name}: ${asset.cpeVendor}:*`);
+        const cpeResults = await searchNVDByCPE(asset.cpeVendor, '*', startDate, endDate, 2000);
+        results.push(...cpeResults);
     }
 
     // Deduplicate (keep recentlyModified version if available)
