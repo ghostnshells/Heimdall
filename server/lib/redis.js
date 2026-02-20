@@ -193,4 +193,114 @@ export async function incrementBatchIndex() {
     return next;
 }
 
+/**
+ * Cascade vulnerabilities from longer time ranges down to shorter ones.
+ * Guarantees: if a CVE's published date falls within a shorter range,
+ * it will appear there even if that range's NVD API call failed or timed out.
+ * Processes ranges from longest to shortest so data flows downward.
+ */
+export async function cascadeTimeRanges(assets) {
+    if (!redis) {
+        throw new Error('Redis not initialized.');
+    }
+
+    // Ordered longest → shortest
+    const rangesDescending = ['119d', '90d', '30d', '7d', '24h'];
+    const rangeDurations = {
+        '119d': 119 * 24 * 60 * 60 * 1000,
+        '90d':  90  * 24 * 60 * 60 * 1000,
+        '30d':  30  * 24 * 60 * 60 * 1000,
+        '7d':   7   * 24 * 60 * 60 * 1000,
+        '24h':  24  * 60 * 60 * 1000,
+    };
+
+    // Load all assembled caches
+    const caches = {};
+    for (const range of rangesDescending) {
+        caches[range] = await redis.get(`vuln:all:${range}`);
+    }
+
+    const now = Date.now();
+    let totalAdded = 0;
+
+    // For each shorter range, check if longer ranges have CVEs that belong in it
+    for (let i = 1; i < rangesDescending.length; i++) {
+        const shorterRange = rangesDescending[i];
+        const shorterCache = caches[shorterRange];
+        if (!shorterCache?.byAsset) continue;
+
+        const cutoffTime = now - rangeDurations[shorterRange];
+
+        // Collect existing CVE IDs in the shorter range (per-asset)
+        const existingIdsByAsset = {};
+        for (const assetId of Object.keys(shorterCache.byAsset)) {
+            existingIdsByAsset[assetId] = new Set(
+                (shorterCache.byAsset[assetId] || []).map(v => v.id)
+            );
+        }
+
+        let addedForRange = 0;
+
+        // Check all longer ranges for CVEs that belong in this shorter range
+        for (let j = 0; j < i; j++) {
+            const longerRange = rangesDescending[j];
+            const longerCache = caches[longerRange];
+            if (!longerCache?.byAsset) continue;
+
+            for (const assetId of Object.keys(longerCache.byAsset)) {
+                const longerAssetVulns = longerCache.byAsset[assetId] || [];
+                if (!existingIdsByAsset[assetId]) {
+                    existingIdsByAsset[assetId] = new Set(
+                        (shorterCache.byAsset[assetId] || []).map(v => v.id)
+                    );
+                }
+
+                for (const vuln of longerAssetVulns) {
+                    // Skip if already in shorter range
+                    if (existingIdsByAsset[assetId].has(vuln.id)) continue;
+
+                    // Check if published date falls within the shorter range
+                    const publishedTime = vuln.published ? new Date(vuln.published).getTime() : 0;
+                    if (publishedTime >= cutoffTime && publishedTime <= now) {
+                        // Add to shorter range
+                        if (!shorterCache.byAsset[assetId]) {
+                            shorterCache.byAsset[assetId] = [];
+                        }
+                        shorterCache.byAsset[assetId].push(vuln);
+                        shorterCache.all.push(vuln);
+                        existingIdsByAsset[assetId].add(vuln.id);
+                        addedForRange++;
+                    }
+                }
+            }
+        }
+
+        if (addedForRange > 0) {
+            // Re-sort the all array
+            shorterCache.all.sort((a, b) => {
+                const aDate = Math.max(
+                    new Date(a.published || 0).getTime(),
+                    new Date(a.lastModified || 0).getTime()
+                );
+                const bDate = Math.max(
+                    new Date(b.published || 0).getTime(),
+                    new Date(b.lastModified || 0).getTime()
+                );
+                return bDate - aDate;
+            });
+
+            shorterCache.fetchedAt = new Date().toISOString();
+            await redis.set(`vuln:all:${shorterRange}`, shorterCache, { ex: CACHE_TTL });
+            console.log(`[Redis] Cascaded ${addedForRange} vulns into ${shorterRange}`);
+            totalAdded += addedForRange;
+        }
+    }
+
+    if (totalAdded > 0) {
+        console.log(`[Redis] Cascade complete: ${totalAdded} total vulns added to shorter ranges`);
+    }
+
+    return totalAdded;
+}
+
 export { redis, BATCH_SIZE, TOTAL_BATCHES };

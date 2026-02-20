@@ -12,6 +12,7 @@ import {
 import {
     setAssetVulns,
     assembleFullCache,
+    cascadeTimeRanges,
     getBatchIndex,
     incrementBatchIndex,
     BATCH_SIZE
@@ -134,6 +135,9 @@ export default async function handler(req, res) {
         for (const timeRange of TIME_RANGES) {
             await assembleFullCache(timeRange, ASSETS);
         }
+
+        // Cascade: ensure vulns in longer ranges appear in all applicable shorter ranges
+        await cascadeTimeRanges(ASSETS);
 
         res.json({
             success: true,
