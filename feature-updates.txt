@@ -26,3 +26,8 @@ APPROVED FEATURES
    - Investigate why data reloads on every visit from different devices
    - Verify Redis/Upstash configuration and cache hit behavior
 
+5. NEWS_REDISIGN
+   - The news feed on the right, when a news article is clicked on, instead of creating
+     a popup in the middle of the screen, the whole news-feed sidebar should expand out
+     with that article's content or summary being displayed how it currently is now as 
+     a popup in the middle

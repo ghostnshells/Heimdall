@@ -51,7 +51,7 @@ try {
     redis = null;
 }
 
-const CACHE_TTL = 7200; // 2 hours in seconds (safety margin over 50-min refresh cycle)
+const CACHE_TTL = 14400; // 4 hours in seconds (safe buffer over 70-min refresh cycle)
 const BATCH_SIZE = 4;
 const TOTAL_BATCHES = 7; // ceil(26 assets / 4)
 
@@ -98,24 +98,44 @@ export async function getAssetVulns(assetId, timeRange) {
 }
 
 /**
- * Assemble full cache from all per-asset keys
+ * Assemble full cache from all per-asset keys.
+ * Uses a "never regress" strategy: if the new assembly has fewer total
+ * vulnerabilities than the existing cache, the old cache is preserved.
+ * This prevents data loss from expired per-asset keys or API failures.
  */
 export async function assembleFullCache(timeRange, assets) {
     if (!redis) {
         throw new Error('Redis not initialized. Check UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
     }
 
+    // Get existing cache to compare against
+    const existingCache = await redis.get(`vuln:all:${timeRange}`);
+
     const byAsset = {};
     const allVulns = [];
+    let missingAssets = 0;
 
     for (const asset of assets) {
         const assetData = await redis.get(`vuln:asset:${asset.id}:${timeRange}`);
-        if (assetData) {
+        if (assetData && Array.isArray(assetData)) {
             byAsset[asset.id] = assetData;
             allVulns.push(...assetData);
         } else {
-            byAsset[asset.id] = [];
+            missingAssets++;
+            // Fall back to the asset's data from the existing assembled cache
+            if (existingCache?.byAsset?.[asset.id]) {
+                const fallbackData = existingCache.byAsset[asset.id];
+                byAsset[asset.id] = fallbackData;
+                allVulns.push(...fallbackData);
+                console.log(`[Redis] Using fallback data for ${asset.id} (${timeRange}): ${fallbackData.length} vulns`);
+            } else {
+                byAsset[asset.id] = [];
+            }
         }
+    }
+
+    if (missingAssets > 0) {
+        console.warn(`[Redis] ${missingAssets}/${assets.length} assets missing per-asset keys for ${timeRange}`);
     }
 
     // Sort all vulnerabilities by most recent date

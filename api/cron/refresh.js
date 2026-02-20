@@ -118,8 +118,9 @@ export default async function handler(req, res) {
                     console.log(`[Cron] ${asset.name} (${timeRange}): ${withThreatActors.length} vulnerabilities`);
                 } catch (error) {
                     console.error(`[Cron] Error for ${asset.name} (${timeRange}):`, error.message);
-                    // Store empty array so assembly still works
-                    await setAssetVulns(asset.id, timeRange, []);
+                    // Do NOT overwrite existing cached data on error.
+                    // The previous good data will remain in Redis until it naturally expires.
+                    // assembleFullCache will use whatever is already stored for this asset.
                 }
             }
         }
