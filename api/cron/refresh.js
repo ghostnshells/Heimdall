@@ -70,6 +70,11 @@ export default async function handler(req, res) {
 
         console.log(`[Cron] Batch ${batchIndex}: processing ${batchAssets.length} assets (${batchAssets.map(a => a.name).join(', ')})`);
 
+        // Advance batch index BEFORE processing so that if this function times out,
+        // the next invocation moves to the next batch instead of retrying forever
+        const nextBatchIndex = await incrementBatchIndex();
+        console.log(`[Cron] Advanced batch index to ${nextBatchIndex} (pre-incremented to avoid starvation)`);
+
         // Process each asset in this batch for all time ranges
         for (const asset of batchAssets) {
             for (const timeRange of TIME_RANGES) {
@@ -129,9 +134,6 @@ export default async function handler(req, res) {
         for (const timeRange of TIME_RANGES) {
             await assembleFullCache(timeRange, ASSETS);
         }
-
-        // Advance to next batch
-        const nextBatchIndex = await incrementBatchIndex();
 
         res.json({
             success: true,

@@ -1,0 +1,455 @@
+================================================================================
+HEIMDALL - CONFIGURATION & ARCHITECTURE GUIDE
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Application Overview
+2. Architecture Diagram
+3. Frontend (React + Vite)
+4. Backend (Vercel Serverless Functions)
+5. Caching Layer (Upstash Redis)
+6. Vercel Configuration
+7. Environment Variables
+8. Data Flow - How a User Request Works
+9. Cron Refresh Cycle - How Data Stays Fresh
+10. NVD API Rate Limiting
+11. File Structure
+12. Setup From Scratch
+13. Troubleshooting
+
+================================================================================
+1. APPLICATION OVERVIEW
+================================================================================
+
+Heimdall is a cybersecurity vulnerability monitoring dashboard. It aggregates
+vulnerability data from the National Vulnerability Database (NVD) and CISA's
+Known Exploited Vulnerabilities (KEV) catalog for 19 monitored assets (Cisco,
+Microsoft, HPE, WatchGuard, etc.).
+
+The app is deployed entirely on Vercel:
+  - Frontend: React SPA built with Vite, served as static files
+  - Backend: Vercel Serverless Functions (Node.js) in the /api directory
+  - Cache: Upstash Redis (serverless Redis, free tier)
+  - Scheduler: Vercel Cron Jobs trigger data refresh every 10 minutes
+
+================================================================================
+2. ARCHITECTURE DIAGRAM
+================================================================================
+
+  +------------------+     every 10 min      +---------------------+
+  |   Vercel Cron    | -------------------> | /api/cron/refresh.js |
+  +------------------+                      +---------------------+
+                                                     |
+                                          fetches 4 assets per run
+                                                     |
+                                    +----------------+----------------+
+                                    |                                 |
+                              +-----v------+                  +------v-----+
+                              |  NVD API   |                  |  CISA KEV  |
+                              | (nist.gov) |                  | (cisa.gov) |
+                              +-----+------+                  +------+-----+
+                                    |                                 |
+                                    +----------------+----------------+
+                                                     |
+                                              merged & validated
+                                                     |
+                                            +--------v--------+
+                                            |  Upstash Redis  |
+                                            |  (cached data)  |
+                                            +--------+--------+
+                                                     ^
+                                                     |
+                                              reads from cache
+                                                     |
+  +------------------+    GET /api/vulnerabilities   |
+  |   User Browser   | ---> +----------------------+-+
+  |  (React Frontend)|      | /api/vulnerabilities.js |
+  +------------------+ <--- +-------------------------+
+                         returns cached JSON
+
+================================================================================
+3. FRONTEND (React + Vite)
+================================================================================
+
+Location: /src
+
+The frontend is a React 18 single-page application built with Vite.
+
+Key files:
+  src/App.jsx                          - Root component, manages all state
+  src/components/Dashboard/            - Main dashboard, stats grid, asset cards
+  src/components/Sidebar/              - Navigation sidebar (categories/vendors)
+  src/components/AlertsList/           - Vulnerability detail slide-out panel
+  src/components/NewsFeed/             - Security news feed panel
+  src/components/TimeRangeToggle/      - Time range filter (24h, 7d, 30d, 90d)
+  src/services/vulnerabilityService.js - Data fetching and caching logic
+  src/data/assets.js                   - Frontend asset definitions
+
+How the frontend fetches data:
+  1. On load, vulnerabilityService.js checks if HAS_BACKEND is true
+  2. If true: makes a single GET request to /api/vulnerabilities?timeRange=7d
+  3. The serverless function returns cached data from Redis
+  4. Frontend caches the response locally (in-memory + localStorage) for 5 minutes
+  5. If the serverless endpoint returns 503 (cache not ready), the frontend falls
+     back to direct NVD API calls via Vercel rewrites (legacy behavior)
+
+The HAS_BACKEND flag is enabled by either:
+  - Setting VITE_API_URL env var (points to an external Express server)
+  - Setting VITE_USE_BACKEND=true (uses same-origin /api/ serverless functions)
+
+Build command: npm run build (outputs to /dist)
+Dev command:   npm run dev (Vite dev server with hot reload)
+
+================================================================================
+4. BACKEND (Vercel Serverless Functions)
+================================================================================
+
+Location: /api
+
+Vercel automatically deploys any .js file in the /api directory as a serverless
+function. Each file exports a default handler(req, res) function.
+
+API Endpoints:
+
+  GET /api/vulnerabilities?timeRange=7d|30d|90d
+    - Reads cached vulnerability data from Upstash Redis
+    - Returns: { success: true, data: { byAsset, all, fetchedAt }, cacheInfo }
+    - If cache is empty: returns 503 with "Cache not ready" message
+    - Response is edge-cached for 60 seconds (s-maxage=60)
+    - This is the only endpoint users hit - it makes ZERO external API calls
+
+  GET /api/cron/refresh (called by Vercel Cron, not by users)
+    - Processes a batch of 4 assets (out of 19 total)
+    - Fetches vulnerability data from NVD API + CISA KEV for those 4 assets
+    - Stores per-asset results in Redis
+    - Reassembles the full combined cache
+    - Advances the batch index for the next run
+    - Protected by CRON_SECRET header (Vercel sends this automatically)
+
+Shared libraries (not endpoints):
+
+  /api/lib/redis.js       - Upstash Redis client and cache helper functions
+  /api/lib/nvdService.js  - NVD/CISA API fetching, parsing, validation logic
+  /api/lib/assets.js      - The 19 monitored asset definitions
+
+================================================================================
+5. CACHING LAYER (Upstash Redis)
+================================================================================
+
+Upstash is a serverless Redis provider. It exposes a REST API, so it works in
+Vercel's serverless environment (no persistent TCP connections needed).
+
+Free tier limits: 10,000 commands/day, 256 MB storage.
+Heimdall's usage: ~200-300 commands/day (well within limits).
+
+Redis key structure:
+
+  vuln:asset:{assetId}:{timeRange}
+    - Per-asset vulnerability data
+    - Example: vuln:asset:cisco:7d
+    - Contains: array of vulnerability objects
+    - TTL: 2 hours
+
+  vuln:all:{timeRange}
+    - Assembled full response (all assets combined)
+    - Example: vuln:all:7d
+    - Contains: { byAsset, all, fetchedAt, timeRange, source }
+    - This is what /api/vulnerabilities returns to users
+    - TTL: 2 hours
+    - Rebuilt after every batch refresh
+
+  vuln:metadata
+    - Cache metadata (last updated timestamps)
+    - TTL: 2 hours
+
+  refresh:batchIndex
+    - Current batch counter (0-4)
+    - Incremented after each cron run
+    - Wraps around to 0 after batch 4
+
+Connection: Uses @upstash/redis npm package with REST URL + token.
+No connection pooling or persistent connections needed.
+
+================================================================================
+6. VERCEL CONFIGURATION
+================================================================================
+
+File: /vercel.json
+
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh",
+      "schedule": "*/10 * * * *"        <-- every 10 minutes
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/nvd",
+      "destination": "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    },
+    {
+      "source": "/api/cisa/:path*",
+      "destination": "https://www.cisa.gov/sites/default/files/feeds/:path*"
+    }
+  ]
+}
+
+Crons:
+  - Vercel Cron Jobs trigger /api/cron/refresh every 10 minutes
+  - Vercel automatically sends a CRON_SECRET bearer token with each invocation
+  - Cron jobs are only active in Production deployments (not preview/dev)
+
+Rewrites:
+  - /api/nvd proxies to NVD API (legacy fallback for direct browser calls)
+  - /api/cisa proxies to CISA feeds (legacy fallback)
+  - These are only used if HAS_BACKEND is false (fallback mode)
+
+Hobby plan limits:
+  - Serverless functions: 60-second timeout
+  - Cron jobs: daily invocations vary by plan
+  - The batched refresh strategy (4 assets per run, ~16 seconds) stays well
+    within the 60-second timeout
+
+================================================================================
+7. ENVIRONMENT VARIABLES
+================================================================================
+
+Set these in Vercel Dashboard > Project Settings > Environment Variables.
+Apply to Production, Preview, and Development environments.
+
+Required:
+  UPSTASH_REDIS_REST_URL    - Redis connection URL from Upstash console
+  UPSTASH_REDIS_REST_TOKEN  - Redis auth token from Upstash console
+  NVD_API_KEY               - NVD API key (get from nvd.nist.gov/developers)
+  VITE_USE_BACKEND          - Set to "true" to enable serverless backend mode
+
+Auto-managed by Vercel:
+  CRON_SECRET               - Vercel generates this automatically for cron auth
+
+Optional (for external Express server, not needed with Vercel serverless):
+  VITE_API_URL              - URL of external Express backend (e.g. Railway)
+
+Note: VITE_ prefixed variables are embedded into the frontend at build time.
+Non-VITE_ variables are only available to serverless functions at runtime.
+
+================================================================================
+8. DATA FLOW - HOW A USER REQUEST WORKS
+================================================================================
+
+Step-by-step when a user opens Heimdall in their browser:
+
+1. Browser loads the React SPA from Vercel's CDN (static HTML/JS/CSS)
+
+2. App.jsx mounts, triggers fetchData() in vulnerabilityService.js
+
+3. vulnerabilityService.js checks HAS_BACKEND:
+   - VITE_USE_BACKEND is "true", so HAS_BACKEND = true
+
+4. Checks local cache (in-memory, then localStorage):
+   - If fresh data exists (< 5 minutes old): returns immediately, done
+   - If not: continues to step 5
+
+5. Makes GET request to /api/vulnerabilities?timeRange=7d
+   (same-origin request to Vercel serverless function)
+
+6. /api/vulnerabilities.js handler:
+   a. Reads vuln:all:7d from Upstash Redis (single REST call, ~10ms)
+   b. Reads vuln:metadata for lastUpdated timestamp
+   c. Returns JSON response with cached data
+
+7. Frontend receives response, transforms it:
+   - Extracts byAsset and all arrays
+   - Computes severity counts (critical, high, medium, low)
+   - Stores in local cache (memory + localStorage)
+   - Updates React state, triggering re-render
+
+8. Dashboard renders: stats grid, vulnerability chart, asset cards
+
+Total time: ~200-500ms (no NVD API calls, just Redis cache read)
+NVD API calls made: ZERO
+
+If 30 users load the app simultaneously:
+  - 30 requests hit /api/vulnerabilities
+  - Each reads from the same Redis cache
+  - NVD API calls: still ZERO
+  - Each response: ~200ms
+
+================================================================================
+9. CRON REFRESH CYCLE - HOW DATA STAYS FRESH
+================================================================================
+
+The 19 monitored assets are split into 5 batches of 4 (last batch has 3):
+
+  Batch 0: Cisco, Microsoft, HPE, WatchGuard
+  Batch 1: Tripp Lite, SolarWinds, ConnectWise, Oracle
+  Batch 2: Veeam, Zerto, BitDefender, Zoom
+  Batch 3: Google Chrome, Firefox, Crestron
+  Batch 4: (empty, resets index to 0)
+
+Every 10 minutes, Vercel Cron triggers /api/cron/refresh:
+
+  Minute 0:   Batch 0 runs - fetches Cisco, Microsoft, HPE, WatchGuard
+  Minute 10:  Batch 1 runs - fetches Tripp Lite, SolarWinds, ConnectWise, Oracle
+  Minute 20:  Batch 2 runs - fetches Veeam, Zerto, BitDefender, Zoom
+  Minute 30:  Batch 3 runs - fetches Chrome, Firefox, Crestron
+  Minute 40:  Batch 4 runs - empty batch, resets index to 0
+  Minute 50:  Batch 0 runs again - full cycle complete
+
+For each asset in a batch, the cron function:
+  1. Fetches vulnerabilities from NVD API (CPE search + keyword search)
+  2. Fetches matching entries from CISA KEV catalog
+  3. Merges results (NVD data + CISA enrichment)
+  4. Applies product-specific validators to filter false positives
+  5. Stores per-asset results in Redis: vuln:asset:{assetId}:{timeRange}
+  6. After all assets in batch are done, reassembles vuln:all:{timeRange}
+
+Each batch processes all 3 time ranges (7d, 30d, 90d) for its assets.
+
+Per-batch execution time: ~10-20 seconds (well within 60s limit)
+Full refresh cycle: ~50 minutes
+NVD API calls per cycle: ~100 total (spread across 5 batches)
+
+================================================================================
+10. NVD API RATE LIMITING
+================================================================================
+
+NVD API limits:
+  With API key:    50 requests per 30 seconds (800ms delay between requests)
+  Without API key: 5 requests per 30 seconds (6500ms delay between requests)
+
+The nvdService.js implements:
+  - Enforced minimum delay between requests (800ms with key)
+  - Exponential backoff on errors (doubles delay after each failure)
+  - Maximum backoff cap at 60 seconds
+  - Automatic retry on 429 (rate limited) and 403 (forbidden) responses
+  - Error counter resets on successful request
+
+Since batches only process 4 assets at a time and run every 10 minutes,
+the rate limits are never hit during normal operation.
+
+================================================================================
+11. FILE STRUCTURE
+================================================================================
+
+/heimdall
+├── api/                              # Vercel Serverless Functions
+│   ├── vulnerabilities.js            # GET endpoint - serves cached data
+│   ├── cron/
+│   │   └── refresh.js                # Cron job - batched NVD/CISA fetch
+│   └── lib/
+│       ├── redis.js                  # Upstash Redis client + cache helpers
+│       ├── nvdService.js             # NVD/CISA fetch, parse, validate logic
+│       └── assets.js                 # 19 monitored asset definitions
+│
+├── src/                              # Frontend React Application
+│   ├── App.jsx                       # Root component
+│   ├── index.css                     # Global styles + design system
+│   ├── main.jsx                      # Entry point
+│   ├── components/                   # UI components
+│   │   ├── Dashboard/                # Main dashboard view
+│   │   ├── Sidebar/                  # Navigation sidebar
+│   │   ├── AlertsList/               # Vulnerability detail panel
+│   │   ├── NewsFeed/                 # Security news feed
+│   │   └── TimeRangeToggle/          # Time range selector
+│   ├── services/                     # Frontend services
+│   │   ├── vulnerabilityService.js   # Main data fetch + cache orchestration
+│   │   ├── nvdApi.js                 # Direct NVD API calls (fallback mode)
+│   │   ├── cisaApi.js                # Direct CISA API calls (fallback mode)
+│   │   └── vendorFeeds.js            # Vendor-specific feeds
+│   └── data/
+│       └── assets.js                 # Frontend asset definitions
+│
+├── server/                           # Express Backend (for Railway/Render)
+│   ├── index.js                      # Express server entry point
+│   └── services/
+│       ├── nvdService.js             # Server-side NVD fetch logic
+│       ├── vulnCache.js              # In-memory + disk cache
+│       └── assets.js                 # Asset definitions
+│
+├── vercel.json                       # Vercel config (crons, rewrites)
+├── vite.config.js                    # Vite build config
+├── package.json                      # Dependencies and scripts
+└── index.html                        # HTML entry point
+
+================================================================================
+12. SETUP FROM SCRATCH
+================================================================================
+
+Prerequisites:
+  - Node.js 18+
+  - Vercel account (free Hobby plan works)
+  - Upstash account (free tier works)
+  - NVD API key (free, from nvd.nist.gov/developers/request-an-api-key)
+
+Step 1: Create Upstash Redis Database
+  - Go to console.upstash.com
+  - Click "Create Database"
+  - Name: heimdall-cache (or anything)
+  - Region: US-East-1 (match your Vercel region)
+  - Type: Regional
+  - Copy the REST URL and REST Token from the database details page
+
+Step 2: Set Vercel Environment Variables
+  - Go to Vercel Dashboard > Your Project > Settings > Environment Variables
+  - Add:
+      UPSTASH_REDIS_REST_URL    = (paste from Upstash)
+      UPSTASH_REDIS_REST_TOKEN  = (paste from Upstash)
+      NVD_API_KEY               = (your NVD API key)
+      VITE_USE_BACKEND          = true
+
+Step 3: Deploy
+  - Push code to GitHub (Vercel auto-deploys from your connected repo)
+  - Or run: npx vercel --prod
+
+Step 4: Seed the Cache
+  - The cron job will start automatically, but it takes ~50 minutes for a
+    full cycle. To seed immediately, visit these URLs in your browser:
+      https://your-app.vercel.app/api/cron/refresh
+    - Refresh the page 4-5 times (waiting ~20 seconds between each) to
+      process all batches
+  - Or just wait ~50 minutes for the cron to complete naturally
+
+Step 5: Verify
+  - Visit: https://your-app.vercel.app/api/vulnerabilities?timeRange=7d
+  - You should see JSON with vulnerability data
+  - Open the main app - it should load instantly from cache
+
+================================================================================
+13. TROUBLESHOOTING
+================================================================================
+
+App shows "Cache not ready" or loading spinner never finishes:
+  - The Redis cache is empty. Either the cron hasn't run yet, or env vars
+    are misconfigured.
+  - Check Vercel Function Logs (Dashboard > Deployments > Functions tab)
+  - Manually trigger: visit /api/cron/refresh in your browser
+  - Verify UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are correct
+
+Cron job not running:
+  - Vercel crons only run on Production deployments (not preview branches)
+  - Check Vercel Dashboard > Project > Settings > Cron Jobs
+  - Verify vercel.json has the crons configuration
+
+NVD API rate limit errors in cron logs:
+  - This is handled automatically with exponential backoff
+  - If persistent: verify NVD_API_KEY is set correctly in Vercel env vars
+  - Without API key: 5 req/30s; with key: 50 req/30s
+
+Data seems stale:
+  - Check /api/vulnerabilities response for cacheInfo.lastUpdated
+  - Full refresh cycle is ~50 minutes
+  - Redis keys have 2-hour TTL as safety net
+
+Frontend falls back to direct API calls (slow loading):
+  - VITE_USE_BACKEND may not be set to "true" in Vercel env vars
+  - This is a build-time variable - you need to redeploy after setting it
+  - Check browser console for "Fetching from server..." vs individual asset logs
+
+Redis out of memory or command limit:
+  - Free tier: 10K commands/day, 256 MB
+  - Heimdall uses ~200-300 commands/day and <10 MB storage
+  - If you hit limits, check for runaway cron invocations
+
+================================================================================

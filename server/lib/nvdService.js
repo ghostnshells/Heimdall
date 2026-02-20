@@ -463,9 +463,10 @@ const PRODUCT_VALIDATORS = {
             desc.includes('teams');
 
         // Exclude other vendors' products
+        // NOTE: 'linux', 'macos', 'apple' intentionally NOT excluded — many Microsoft
+        // products are cross-platform (Edge, .NET, VS Code, SQL Server Linux edition)
         const otherVendorExclusions = [
-            'libreoffice', 'openoffice', 'google docs', 'google workspace',
-            'linux', 'macos', 'apple'
+            'libreoffice', 'openoffice', 'google docs', 'google workspace'
         ];
         const hasOtherVendor = otherVendorExclusions.some(term => desc.includes(term));
 
@@ -758,10 +759,8 @@ const PRODUCT_VALIDATORS = {
             p.cpe?.includes(':mozilla:firefox')
         );
 
-        const descHasFirefoxContext =
-            desc.includes('mozilla firefox') ||
-            desc.includes('firefox browser') ||
-            (desc.includes('firefox') && desc.includes('mozilla'));
+        // NVD descriptions say just "Firefox", not "Mozilla Firefox"
+        const descHasFirefoxContext = desc.includes('firefox');
 
         const explicitExclusions = [
             'chrome', 'edge', 'safari', 'opera', 'brave', 'vivaldi'
@@ -945,42 +944,32 @@ async function searchNVDByCPELastModified(vendor, product, startDate, endDate, r
 
 /**
  * Fetch vulnerabilities for a single asset
- * Supports new cpeProducts array format
- * Searches both by published date AND last modified date
+ * Uses keyword-primary search strategy: a single broad keyword search per asset
+ * instead of per-CPE-product searches (which caused too many API calls and timeouts).
+ * Validators handle false positive filtering.
  */
 async function fetchVulnerabilitiesForAsset(asset, startDate, endDate) {
     const results = [];
 
-    // Keyword search only if preferred (e.g., Veeam where CPE matching is unreliable)
-    if (asset.preferKeywordSearch && asset.keywords?.length > 0) {
+    // Keyword-primary search: one broad keyword search per asset
+    // keywords[0] should be the shortest unambiguous vendor/product term
+    // NVD keyword search requires ALL words to match, so shorter = broader coverage
+    if (asset.keywords?.length > 0) {
         const keyword = asset.keywords[0];
-        const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate);
+        console.log(`[NVD] Keyword search for ${asset.name}: "${keyword}"`);
+        const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate, 2000);
         results.push(...keywordResults);
     }
-    // For most assets: search BOTH by CPE AND by keywords to ensure complete coverage
-    // CPE search is accurate but misses newly published CVEs that don't have CPE data yet
-    // Keyword search catches those CVEs but may have more false positives (filtered later)
-    else {
-        // CPE-based search (accurate for CVEs with CPE data)
-        if (asset.cpeVendor) {
-            const cpeProducts = asset.cpeProducts || (asset.cpeProduct ? [asset.cpeProduct] : []);
-            const cpeVendors = [asset.cpeVendor, ...(asset.additionalCpeVendors || [])];
 
-            for (const vendor of cpeVendors) {
-                for (const product of cpeProducts) {
-                    const cpeResults = await searchNVDByCPE(vendor, product, startDate, endDate);
-                    results.push(...cpeResults);
-                }
-            }
-        }
-
-        // ALSO search by keywords to catch CVEs without CPE data yet
-        // NVD often publishes CVEs before adding CPE entries, especially for new vulns
-        if (asset.keywords?.length > 0) {
-            const keyword = asset.keywords[0];
-            const keywordResults = await searchNVDByKeyword(keyword, startDate, endDate);
-            results.push(...keywordResults);
-        }
+    // Vendor-level CPE fallback (opt-in only via useCpeFallback flag):
+    // For small vendors like Veeam, some CVEs don't mention the vendor name in the
+    // description at all. A vendor-level CPE search catches these.
+    // NOT safe for large vendors (Microsoft, Cisco, Google) — the wildcard CPE search
+    // returns tens of thousands of results and causes NVD API timeouts.
+    if (asset.useCpeFallback && asset.cpeVendor) {
+        console.log(`[NVD] Vendor CPE fallback for ${asset.name}: ${asset.cpeVendor}:*`);
+        const cpeResults = await searchNVDByCPE(asset.cpeVendor, '*', startDate, endDate, 2000);
+        results.push(...cpeResults);
     }
 
     // Deduplicate (keep recentlyModified version if available)
