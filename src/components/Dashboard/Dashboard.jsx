@@ -90,23 +90,32 @@ const Dashboard = ({
     selectedSubcategory,
     isAuthenticated = false,
     vulnStatuses = {},
-    slaConfig
+    slaConfig,
+    userAssets
 }) => {
-    // Get assets based on view mode
+    // Get assets based on view mode, filtered by user's selected assets
     const getFilteredAssets = () => {
+        let result;
         if (viewMode === 'vendor') {
             if (selectedSubcategory && selectedVendor) {
-                return getAssetsByVendorAndSubcategory(selectedVendor, selectedSubcategory);
+                result = getAssetsByVendorAndSubcategory(selectedVendor, selectedSubcategory);
+            } else if (selectedVendor) {
+                result = getAssetsByVendorGroup(selectedVendor);
+            } else {
+                result = ASSETS;
             }
-            if (selectedVendor) {
-                return getAssetsByVendorGroup(selectedVendor);
-            }
-            return ASSETS;
+        } else {
+            // Category view (default)
+            result = selectedCategory === 'All'
+                ? ASSETS
+                : getAssetsByCategory(selectedCategory);
         }
-        // Category view (default)
-        return selectedCategory === 'All'
-            ? ASSETS
-            : getAssetsByCategory(selectedCategory);
+        // Filter by user's monitored assets if set
+        if (userAssets) {
+            const allowedSet = new Set(userAssets);
+            result = result.filter(a => allowedSet.has(a.id));
+        }
+        return result;
     };
 
     const assets = getFilteredAssets();
@@ -130,10 +139,15 @@ const Dashboard = ({
         if (viewMode === 'vendor' && selectedVendor && !selectedSubcategory) {
             const subcategories = getSubcategoriesForVendor(selectedVendor);
             if (subcategories.length > 1) {
-                return subcategories.map(subcat => ({
-                    name: subcat,
-                    assets: getAssetsByVendorAndSubcategory(selectedVendor, subcat)
-                }));
+                const allowedSet = userAssets ? new Set(userAssets) : null;
+                const groups = subcategories.map(subcat => {
+                    let subcatAssets = getAssetsByVendorAndSubcategory(selectedVendor, subcat);
+                    if (allowedSet) {
+                        subcatAssets = subcatAssets.filter(a => allowedSet.has(a.id));
+                    }
+                    return { name: subcat, assets: subcatAssets };
+                }).filter(group => group.assets.length > 0);
+                if (groups.length > 0) return groups;
             }
         }
         return null;

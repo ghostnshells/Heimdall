@@ -405,6 +405,7 @@ function App() {
                             isAuthenticated={isLoggedIn}
                             vulnStatuses={vulnStatuses}
                             slaConfig={slaConfig}
+                            userAssets={userAssets}
                         />
 
                         <aside className={`news-panel ${isNewsFeedCollapsed ? 'collapsed' : ''}`}>

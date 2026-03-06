@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, CheckCircle, Mail, Shield, Save, Loader } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Mail, Shield, Save, Loader } from 'lucide-react';
 import { ASSETS, ASSET_CATEGORIES } from '../../data/assets';
 import { getUserAssets, setUserAssets } from '../../services/userService';
 import { resendVerification } from '../../services/authService';
@@ -199,6 +199,9 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
                                 <div key={category} className="settings-category">
                                     <div className="settings-category-header">
                                         <span className="settings-category-name">{category}</span>
+                                        <span className="settings-category-count">
+                                            {assets.filter(a => selectedAssets.has(a.id)).length}/{assets.length}
+                                        </span>
                                         <div className="settings-category-actions">
                                             {allCategorySelected(category) ? (
                                                 <button
@@ -217,22 +220,19 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="settings-asset-grid">
+                                    <div className="settings-asset-list">
                                         {assets.map(asset => (
                                             <label
                                                 key={asset.id}
-                                                className={`settings-asset-item ${selectedAssets.has(asset.id) ? 'selected' : ''}`}
+                                                className={`settings-asset-row ${selectedAssets.has(asset.id) ? 'selected' : ''}`}
                                             >
-                                                <div className="settings-checkbox">
-                                                    {selectedAssets.has(asset.id) && <Check size={12} />}
-                                                </div>
-                                                <span className="settings-asset-name">{asset.name}</span>
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedAssets.has(asset.id)}
                                                     onChange={() => toggleAsset(asset.id)}
-                                                    className="sr-only"
+                                                    className="settings-native-checkbox"
                                                 />
+                                                <span className="settings-asset-name">{asset.name}</span>
                                             </label>
                                         ))}
                                     </div>
