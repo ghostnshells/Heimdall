@@ -35,11 +35,21 @@ export function getStoredUser() {
 /**
  * Store tokens and user info
  */
-function storeAuth(accessToken, refreshToken, user) {
+export function storeAuth(accessToken, refreshToken, user) {
     localStorage.setItem(TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_KEY, refreshToken);
     if (user) {
         localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
+}
+
+/**
+ * Update stored user data (e.g. after email verification)
+ */
+export function updateStoredUser(updates) {
+    const current = getStoredUser();
+    if (current) {
+        localStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...updates }));
     }
 }
 
@@ -193,4 +203,70 @@ export async function getCurrentUser() {
     }
 
     return data.user;
+}
+
+/**
+ * Verify email with token from link
+ */
+export async function verifyEmailToken(token) {
+    const response = await fetch(`${AUTH_API}/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Verification failed');
+    }
+    return data;
+}
+
+/**
+ * Resend verification email
+ */
+export async function resendVerification() {
+    const response = await fetchWithAuth(`${AUTH_API}/resend-verification`, {
+        method: 'POST'
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to resend verification');
+    }
+    return data;
+}
+
+/**
+ * Request password reset email
+ */
+export async function forgotPassword(email) {
+    const response = await fetch(`${AUTH_API}/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+    }
+    return data;
+}
+
+/**
+ * Reset password with token from email
+ */
+export async function resetPasswordWithToken(token, password) {
+    const response = await fetch(`${AUTH_API}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Password reset failed');
+    }
+    return data;
 }

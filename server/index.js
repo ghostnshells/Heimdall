@@ -9,7 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Database initialisation
-import { initializeDatabase, cleanupExpiredCache, cleanupExpiredSessions } from './lib/db.js';
+import { initializeDatabase, cleanupExpiredCache, cleanupExpiredSessions, cleanupExpiredTokens } from './lib/db.js';
 
 // Shared library services (same code Vercel serverless functions used)
 import { ASSETS } from './lib/assets.js';
@@ -40,9 +40,14 @@ import {
     verifyRefreshToken,
     isRefreshTokenValid,
     revokeRefreshToken,
-    getUser
+    getUser,
+    requestEmailVerification,
+    verifyEmail,
+    requestPasswordReset,
+    resetPassword,
+    verifyAccessToken
 } from './lib/auth.js';
-import { verifyAccessToken } from './lib/auth.js';
+import { getUserAssets, setUserAssets } from './lib/userAssetsService.js';
 import {
     getVulnStatus,
     setVulnStatus,
@@ -198,6 +203,13 @@ app.post('/api/auth/signup', async (req, res) => {
         const tokens = generateTokens(user.email);
         await storeRefreshToken(tokens.refreshToken, user.email);
 
+        // Send verification email (best effort)
+        try {
+            await requestEmailVerification(user.email);
+        } catch (emailErr) {
+            console.warn('Failed to send verification email:', emailErr.message);
+        }
+
         res.status(201).json({
             success: true,
             user,
@@ -280,6 +292,130 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         res.json({ success: true, user });
     } catch (error) {
         console.error('Me error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ===================
+// API Routes — Email Verification & Password Reset
+// ===================
+
+// POST /api/auth/verify-email
+app.post('/api/auth/verify-email', async (req, res) => {
+    try {
+        const { token } = req.body || {};
+        if (!token) {
+            return res.status(400).json({ error: 'Token is required' });
+        }
+
+        const email = await verifyEmail(token);
+        res.json({ success: true, email });
+    } catch (error) {
+        if (error.message.includes('Invalid') || error.message.includes('expired')) {
+            return res.status(400).json({ error: error.message });
+        }
+        console.error('Verify email error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/auth/resend-verification
+app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
+    try {
+        await requestEmailVerification(req.user.email);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Resend verification error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/auth/forgot-password
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body || {};
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        await requestPasswordReset(email);
+        // Always return success to prevent email enumeration
+        res.json({ success: true });
+    } catch (error) {
+        if (error.message.includes('Too many')) {
+            return res.status(429).json({ error: error.message });
+        }
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/auth/reset-password
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { token, password } = req.body || {};
+        if (!token || !password) {
+            return res.status(400).json({ error: 'Token and password are required' });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        }
+
+        await resetPassword(token, password);
+        res.json({ success: true });
+    } catch (error) {
+        if (error.message.includes('Invalid') || error.message.includes('expired')) {
+            return res.status(400).json({ error: error.message });
+        }
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ===================
+// API Routes — User Profile & Assets
+// ===================
+
+// GET /api/user/profile
+app.get('/api/user/profile', requireAuth, async (req, res) => {
+    try {
+        const user = await getUser(req.user.email);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error('Profile error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/user/assets
+app.get('/api/user/assets', requireAuth, async (req, res) => {
+    try {
+        const assets = await getUserAssets(req.user.email);
+        res.json({ success: true, assets });
+    } catch (error) {
+        console.error('Get user assets error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// PUT /api/user/assets
+app.put('/api/user/assets', requireAuth, async (req, res) => {
+    try {
+        const { assetIds } = req.body || {};
+        if (!assetIds || !Array.isArray(assetIds)) {
+            return res.status(400).json({ error: 'assetIds array is required' });
+        }
+
+        const result = await setUserAssets(req.user.email, assetIds);
+        res.json({ success: true, assets: result });
+    } catch (error) {
+        if (error.message.includes('Invalid asset')) {
+            return res.status(400).json({ error: error.message });
+        }
+        console.error('Set user assets error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -667,12 +803,13 @@ cron.schedule('0 * * * *', async () => {
     await refreshCache();
 });
 
-// Clean up expired cache entries and sessions every 6 hours
+// Clean up expired cache entries, sessions, and tokens every 6 hours
 cron.schedule('0 */6 * * *', async () => {
     console.log('Running expired data cleanup...');
     try {
         await cleanupExpiredCache();
         await cleanupExpiredSessions();
+        await cleanupExpiredTokens();
     } catch (err) {
         console.error('Cleanup error:', err.message);
     }

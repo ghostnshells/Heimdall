@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Mail, Lock, LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import './LoginPage.css';
 
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ onLogin, onForgotPassword }) => {
     const [isSignup, setIsSignup] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -107,6 +107,16 @@ const LoginPage = ({ onLogin }) => {
                             autoComplete={isSignup ? 'new-password' : 'current-password'}
                         />
                     </div>
+
+                    {!isSignup && onForgotPassword && (
+                        <button
+                            type="button"
+                            className="login-forgot-link"
+                            onClick={onForgotPassword}
+                        >
+                            Forgot Password?
+                        </button>
+                    )}
 
                     {isSignup && (
                         <div className="login-field">

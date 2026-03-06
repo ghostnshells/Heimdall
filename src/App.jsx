@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Menu, Newspaper, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Menu, Newspaper, LogOut, AlertTriangle, X } from 'lucide-react';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import AlertsList from './components/AlertsList/AlertsList';
 import NewsFeed from './components/NewsFeed';
 import Pulse from './components/Pulse/Pulse';
 import LoginPage from './components/Auth/LoginPage';
+import ForgotPassword from './components/Auth/ForgotPassword';
+import ResetPassword from './components/Auth/ResetPassword';
+import VerifyEmail from './components/Auth/VerifyEmail';
+import Settings from './components/Settings/Settings';
 import {
     fetchAllVulnerabilities,
     getVulnerabilityStats,
@@ -17,8 +21,11 @@ import {
     getStoredUser,
     login as authLogin,
     signup as authSignup,
-    logout as authLogout
+    logout as authLogout,
+    updateStoredUser,
+    resendVerification
 } from './services/authService';
+import { getUserAssets } from './services/userService';
 
 function App() {
     // State
@@ -44,6 +51,16 @@ function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const [showLoginModal, setShowLoginModal] = useState(false);
 
+    // Auth flow views
+    const [authView, setAuthView] = useState(null); // null | 'forgot' | 'reset' | 'verify' | 'settings'
+    const [authToken, setAuthToken] = useState(null); // token from URL for verify/reset
+
+    // User asset customization
+    const [userAssets, setUserAssets] = useState(null); // null = show all, array = filtered
+
+    // Verification banner
+    const [showVerificationBanner, setShowVerificationBanner] = useState(true);
+
     // Vendor view mode state
     const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
     const [selectedVendor, setSelectedVendor] = useState(null);
@@ -51,6 +68,37 @@ function App() {
 
     // Active view state: 'dashboard' | 'pulse'
     const [activeView, setActiveView] = useState('dashboard');
+
+    // URL-based routing on mount
+    useEffect(() => {
+        const path = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        if (path === '/verify-email' && token) {
+            setAuthView('verify');
+            setAuthToken(token);
+        } else if (path === '/reset-password' && token) {
+            setAuthView('reset');
+            setAuthToken(token);
+        } else if (path === '/settings') {
+            if (isAuthenticated()) {
+                setAuthView('settings');
+            }
+            window.history.replaceState(null, '', '/');
+        }
+    }, []);
+
+    // Load user asset preferences on login
+    useEffect(() => {
+        if (isLoggedIn) {
+            getUserAssets()
+                .then(assets => setUserAssets(assets))
+                .catch(() => setUserAssets(null));
+        } else {
+            setUserAssets(null);
+        }
+    }, [isLoggedIn]);
 
     // Handle view mode change
     const handleViewModeChange = (mode) => {
@@ -86,6 +134,7 @@ function App() {
         }
         setIsLoggedIn(true);
         setShowLoginModal(false);
+        setShowVerificationBanner(true);
     };
 
     // Handle logout
@@ -93,6 +142,27 @@ function App() {
         await authLogout();
         setUser(null);
         setIsLoggedIn(false);
+        setUserAssets(null);
+        setAuthView(null);
+    };
+
+    // Handle auth view completion (verify/reset done)
+    const handleAuthViewComplete = () => {
+        setAuthView(null);
+        setAuthToken(null);
+        window.history.replaceState(null, '', '/');
+        // If email was verified, update local user state
+        if (user) {
+            const updated = { ...user, emailVerified: true };
+            setUser(updated);
+            updateStoredUser({ emailVerified: true });
+        }
+    };
+
+    // Handle forgot password
+    const handleForgotPassword = () => {
+        setShowLoginModal(false);
+        setAuthView('forgot');
     };
 
     // Fetch vulnerabilities from live NVD API
@@ -144,6 +214,37 @@ function App() {
     const [vulnStatuses, setVulnStatuses] = useState({});
     const [slaConfig, setSlaConfig] = useState(null);
 
+    // Filter data by user's selected assets
+    const filteredVulnerabilities = useMemo(() => {
+        if (!vulnerabilities || !userAssets) return vulnerabilities;
+        const allowedSet = new Set(userAssets);
+        const filteredByAsset = {};
+        const filteredAll = [];
+
+        for (const [assetId, vulns] of Object.entries(vulnerabilities.byAsset || {})) {
+            if (allowedSet.has(assetId)) {
+                filteredByAsset[assetId] = vulns;
+                filteredAll.push(...vulns);
+            }
+        }
+
+        return {
+            ...vulnerabilities,
+            byAsset: filteredByAsset,
+            all: filteredAll
+        };
+    }, [vulnerabilities, userAssets]);
+
+    const filteredStats = useMemo(() => {
+        if (!filteredVulnerabilities) return stats;
+        return getVulnerabilityStats(filteredVulnerabilities);
+    }, [filteredVulnerabilities, stats]);
+
+    const filteredVulnCounts = useMemo(() => {
+        if (!filteredVulnerabilities) return vulnCounts;
+        return getVulnCountsByAsset(filteredVulnerabilities);
+    }, [filteredVulnerabilities, vulnCounts]);
+
     // Handle status change from lifecycle components
     const handleStatusChange = (cveId, newStatus) => {
         setVulnStatuses(prev => ({
@@ -169,6 +270,43 @@ function App() {
         if (!selectedAsset || !vulnerabilities?.byAsset) return [];
         return vulnerabilities.byAsset[selectedAsset.id] || [];
     };
+
+    // Render special auth views (full-page)
+    if (authView === 'verify') {
+        return <VerifyEmail token={authToken} onComplete={handleAuthViewComplete} />;
+    }
+    if (authView === 'reset') {
+        return (
+            <ResetPassword
+                token={authToken}
+                onComplete={() => {
+                    setAuthView(null);
+                    setAuthToken(null);
+                    window.history.replaceState(null, '', '/');
+                    setShowLoginModal(true);
+                }}
+            />
+        );
+    }
+    if (authView === 'forgot') {
+        return (
+            <ForgotPassword
+                onBack={() => {
+                    setAuthView(null);
+                    setShowLoginModal(true);
+                }}
+            />
+        );
+    }
+    if (authView === 'settings' && isLoggedIn) {
+        return (
+            <Settings
+                user={user}
+                onBack={() => setAuthView(null)}
+                onAssetsChanged={(ids) => setUserAssets(ids)}
+            />
+        );
+    }
 
     return (
         <div className={`app ${isSidebarCollapsed ? 'sidebar-collapsed' : ''} ${isNewsFeedCollapsed ? 'news-collapsed' : ''} ${isMobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
@@ -215,7 +353,7 @@ function App() {
                     setSelectedCategory(cat);
                     setIsMobileSidebarOpen(false);
                 }}
-                vulnCounts={vulnCounts}
+                vulnCounts={filteredVulnCounts}
                 lastUpdated={vulnerabilities?.fetchedAt}
                 onRefresh={handleRefresh}
                 isLoading={isLoading}
@@ -238,6 +376,11 @@ function App() {
                     setActiveView(view);
                     setIsMobileSidebarOpen(false);
                 }}
+                isLoggedIn={isLoggedIn}
+                user={user}
+                onSignInClick={() => setShowLoginModal(true)}
+                onLogoutClick={handleLogout}
+                onSettingsClick={() => setAuthView('settings')}
             />
 
             <main className="main-content">
@@ -249,9 +392,9 @@ function App() {
                             selectedCategory={selectedCategory}
                             timeRange={timeRange}
                             onTimeRangeChange={handleTimeRangeChange}
-                            vulnerabilities={vulnerabilities}
-                            vulnCounts={vulnCounts}
-                            stats={stats}
+                            vulnerabilities={filteredVulnerabilities}
+                            vulnCounts={filteredVulnCounts}
+                            stats={filteredStats}
                             isLoading={isLoading}
                             loadingProgress={loadingProgress}
                             onAssetClick={handleAssetClick}
@@ -299,11 +442,36 @@ function App() {
                 />
             )}
 
+            {/* Verification Banner */}
+            {isLoggedIn && user && !user.emailVerified && showVerificationBanner && (
+                <div className="verification-banner">
+                    <AlertTriangle size={16} />
+                    <span>Please verify your email address to unlock all features.</span>
+                    <button
+                        className="verification-banner-resend"
+                        onClick={async () => {
+                            try {
+                                await resendVerification();
+                                alert('Verification email sent!');
+                            } catch { /* ignore */ }
+                        }}
+                    >
+                        Resend Link
+                    </button>
+                    <button
+                        className="verification-banner-close"
+                        onClick={() => setShowVerificationBanner(false)}
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
+
             {/* Login Modal */}
             {showLoginModal && !isLoggedIn && (
                 <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
                     <div onClick={(e) => e.stopPropagation()}>
-                        <LoginPage onLogin={handleLogin} />
+                        <LoginPage onLogin={handleLogin} onForgotPassword={handleForgotPassword} />
                     </div>
                 </div>
             )}

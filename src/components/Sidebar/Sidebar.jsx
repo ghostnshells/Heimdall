@@ -20,7 +20,10 @@ import {
     Building2,
     Layers,
     Menu,
-    Activity
+    Activity,
+    LogIn,
+    LogOut,
+    Settings
 } from 'lucide-react';
 import {
     ASSET_CATEGORIES,
@@ -86,6 +89,11 @@ const Sidebar = ({
     onSubcategorySelect,
     activeView = 'dashboard',
     onActiveViewChange,
+    isLoggedIn = false,
+    user = null,
+    onSignInClick,
+    onLogoutClick,
+    onSettingsClick,
 }) => {
     const categories = Object.values(ASSET_CATEGORIES);
     const vendorGroups = getVendorGroups();
@@ -383,6 +391,44 @@ const Sidebar = ({
                         NVD API has rate limits. This may take a few minutes.
                     </p>
                 )}
+
+                {/* Auth section */}
+                <div className="sidebar-auth">
+                    {isLoggedIn ? (
+                        <div className="sidebar-auth-user">
+                            {!isCollapsed && (
+                                <span className="sidebar-user-email" title={user?.email}>
+                                    {user?.email}
+                                </span>
+                            )}
+                            <div className="sidebar-auth-actions">
+                                <button
+                                    className="sidebar-auth-icon-btn"
+                                    onClick={onSettingsClick}
+                                    title="Settings"
+                                >
+                                    <Settings size={16} />
+                                </button>
+                                <button
+                                    className="sidebar-auth-icon-btn"
+                                    onClick={onLogoutClick}
+                                    title="Sign Out"
+                                >
+                                    <LogOut size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            className="sidebar-signin-btn"
+                            onClick={onSignInClick}
+                            title="Sign In"
+                        >
+                            <LogIn size={16} />
+                            {!isCollapsed && <span>Sign In</span>}
+                        </button>
+                    )}
+                </div>
             </div>
         </aside>
     );

@@ -383,6 +383,78 @@
     font-size: 10px;
 }
 
+/* Auth Section */
+.sidebar-auth {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-auth-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.sidebar-user-email {
+    flex: 1;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.sidebar-auth-actions {
+    display: flex;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.sidebar-auth-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-auth-icon-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+.sidebar-signin-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-signin-btn:hover {
+    background: var(--accent-primary-glow);
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
 /* Collapsed State */
 .sidebar.collapsed {
     width: 70px;
@@ -424,6 +496,15 @@
 }
 
 .sidebar.collapsed .sidebar-refresh-btn {
+    padding: var(--space-2);
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-auth-user {
+    flex-direction: column;
+}
+
+.sidebar.collapsed .sidebar-signin-btn {
     padding: var(--space-2);
     justify-content: center;
 }

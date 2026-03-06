@@ -67,6 +67,30 @@ export async function initializeDatabase() {
                 medium   INT NOT NULL DEFAULT 90,
                 low      INT NOT NULL DEFAULT 180
             );
+
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
+
+            CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                token_hash TEXT PRIMARY KEY,
+                email      TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+                expires_at TIMESTAMPTZ NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                token_hash TEXT PRIMARY KEY,
+                email      TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+                expires_at TIMESTAMPTZ NOT NULL,
+                used       BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS user_assets (
+                user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+                asset_id   TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (user_email, asset_id)
+            );
         `);
         console.log('[DB] Schema initialised');
     } finally {
@@ -114,6 +138,17 @@ export async function cleanupExpiredSessions() {
         `DELETE FROM sessions WHERE expires_at <= NOW()`
     );
     if (rowCount > 0) console.log(`[DB] Cleaned up ${rowCount} expired sessions`);
+}
+
+export async function cleanupExpiredTokens() {
+    const { rowCount: verif } = await pool.query(
+        `DELETE FROM email_verification_tokens WHERE expires_at <= NOW()`
+    );
+    const { rowCount: reset } = await pool.query(
+        `DELETE FROM password_reset_tokens WHERE expires_at <= NOW() OR used = TRUE`
+    );
+    const total = (verif || 0) + (reset || 0);
+    if (total > 0) console.log(`[DB] Cleaned up ${total} expired tokens`);
 }
 
 // ── Health check ───────────────────────────────────────────────────

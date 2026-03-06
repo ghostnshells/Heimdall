@@ -675,3 +675,57 @@ a:hover {
   justify-content: center;
   z-index: 2000;
 }
+
+/* Verification Banner */
+.verification-banner {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(234, 179, 8, 0.12);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.3);
+  color: #eab308;
+  font-size: 13px;
+  z-index: 500;
+}
+
+.verification-banner-resend {
+  background: none;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #eab308;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background 0.15s;
+}
+
+.verification-banner-resend:hover {
+  background: rgba(234, 179, 8, 0.15);
+}
+
+.verification-banner-close {
+  background: none;
+  border: none;
+  color: rgba(234, 179, 8, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.verification-banner-close:hover {
+  color: #eab308;
+}
+
+@media (max-width: 768px) {
+  .verification-banner {
+    left: 0;
+    top: 56px;
+  }
+}
