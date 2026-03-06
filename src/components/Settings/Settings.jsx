@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, Mail, Shield, Save, Loader } from 'lucide-react';
-import { ASSETS, ASSET_CATEGORIES } from '../../data/assets';
+import { ASSETS } from '../../data/assets';
 import { getUserAssets, setUserAssets } from '../../services/userService';
 import { resendVerification } from '../../services/authService';
 import './Settings.css';
 
-// Group assets by category
-const CATEGORY_LIST = Object.values(ASSET_CATEGORIES);
-const assetsByCategory = {};
-CATEGORY_LIST.forEach(cat => {
-    const assets = ASSETS.filter(a => a.category === cat);
-    if (assets.length > 0) assetsByCategory[cat] = assets;
-});
+// Sorted alphabetically once
+const SORTED_ASSETS = [...ASSETS].sort((a, b) => a.name.localeCompare(b.name));
 
 const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
     const [selectedAssets, setSelectedAssets] = useState(new Set(ASSETS.map(a => a.id)));
@@ -53,21 +48,13 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
         setSaveStatus(null);
     };
 
-    const selectAllInCategory = (category) => {
-        setSelectedAssets(prev => {
-            const next = new Set(prev);
-            assetsByCategory[category].forEach(a => next.add(a.id));
-            return next;
-        });
+    const selectAll = () => {
+        setSelectedAssets(new Set(ASSETS.map(a => a.id)));
         setSaveStatus(null);
     };
 
-    const deselectAllInCategory = (category) => {
-        setSelectedAssets(prev => {
-            const next = new Set(prev);
-            assetsByCategory[category].forEach(a => next.delete(a.id));
-            return next;
-        });
+    const deselectAll = () => {
+        setSelectedAssets(new Set());
         setSaveStatus(null);
     };
 
@@ -112,8 +99,7 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
         return false;
     })();
 
-    const allCategorySelected = (category) =>
-        assetsByCategory[category]?.every(a => selectedAssets.has(a.id));
+    const allSelected = selectedAssets.size === ASSETS.length;
 
     return (
         <div className="settings-page">
@@ -183,9 +169,17 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
                 <section className="settings-section">
                     <div className="settings-section-header">
                         <h2 className="settings-section-title">Monitored Assets</h2>
-                        <span className="settings-asset-count">
-                            {selectedAssets.size} / {ASSETS.length} selected
-                        </span>
+                        <div className="settings-section-actions">
+                            <span className="settings-asset-count">
+                                {selectedAssets.size} / {ASSETS.length}
+                            </span>
+                            <button
+                                className="settings-toggle-all-btn"
+                                onClick={allSelected ? deselectAll : selectAll}
+                            >
+                                {allSelected ? 'Deselect All' : 'Select All'}
+                            </button>
+                        </div>
                     </div>
 
                     {isLoading ? (
@@ -194,49 +188,20 @@ const Settings = ({ user, onBack, onAssetsChanged, onEmailVerified }) => {
                             <span>Loading preferences...</span>
                         </div>
                     ) : (
-                        <div className="settings-categories">
-                            {Object.entries(assetsByCategory).map(([category, assets]) => (
-                                <div key={category} className="settings-category">
-                                    <div className="settings-category-header">
-                                        <span className="settings-category-name">{category}</span>
-                                        <span className="settings-category-count">
-                                            {assets.filter(a => selectedAssets.has(a.id)).length}/{assets.length}
-                                        </span>
-                                        <div className="settings-category-actions">
-                                            {allCategorySelected(category) ? (
-                                                <button
-                                                    className="settings-cat-btn"
-                                                    onClick={() => deselectAllInCategory(category)}
-                                                >
-                                                    Deselect All
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    className="settings-cat-btn"
-                                                    onClick={() => selectAllInCategory(category)}
-                                                >
-                                                    Select All
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="settings-asset-list">
-                                        {assets.map(asset => (
-                                            <label
-                                                key={asset.id}
-                                                className={`settings-asset-row ${selectedAssets.has(asset.id) ? 'selected' : ''}`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedAssets.has(asset.id)}
-                                                    onChange={() => toggleAsset(asset.id)}
-                                                    className="settings-native-checkbox"
-                                                />
-                                                <span className="settings-asset-name">{asset.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
+                        <div className="settings-asset-columns">
+                            {SORTED_ASSETS.map(asset => (
+                                <label
+                                    key={asset.id}
+                                    className={`settings-asset-row ${selectedAssets.has(asset.id) ? 'selected' : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedAssets.has(asset.id)}
+                                        onChange={() => toggleAsset(asset.id)}
+                                        className="settings-native-checkbox"
+                                    />
+                                    <span className="settings-asset-name">{asset.name}</span>
+                                </label>
                             ))}
                         </div>
                     )}
