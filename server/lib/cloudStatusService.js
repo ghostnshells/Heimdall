@@ -310,8 +310,18 @@ export function computeDailyStatus(incidents) {
         // Find incidents that overlap this day
         const dayIncidents = incidents.filter(inc => {
             const created = new Date(inc.created).getTime();
-            const resolved = inc.resolved ? new Date(inc.resolved).getTime() : Date.now();
-            return created <= dayEnd && resolved >= dayStart;
+            // Use the latest known timestamp as the end bound:
+            // resolved date, last update timestamp, or creation date itself.
+            // Do NOT default to Date.now() — that makes a single-day incident
+            // span every day from creation until today.
+            let end = created;
+            if (inc.resolved) {
+                end = new Date(inc.resolved).getTime();
+            } else if (inc.updates?.length > 0) {
+                const lastUpdate = new Date(inc.updates[inc.updates.length - 1].timestamp).getTime();
+                if (lastUpdate > end) end = lastUpdate;
+            }
+            return created <= dayEnd && end >= dayStart;
         });
 
         let status = 'operational';
@@ -337,12 +347,20 @@ export function computeDailyStatus(incidents) {
  * Compute overall status from daily status
  */
 export function computeOverallStatus(dailyStatus, incidents) {
-    // Check active (unresolved) incidents first
-    const activeIncidents = incidents.filter(inc => inc.status !== 'resolved');
+    // Check truly active incidents — unresolved AND with recent activity (last 24h)
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const activeIncidents = incidents.filter(inc => {
+        if (inc.status === 'resolved') return false;
+        // Consider active only if created or last updated within the past 24h
+        const lastActivity = inc.updates?.length > 0
+            ? new Date(inc.updates[inc.updates.length - 1].timestamp).getTime()
+            : new Date(inc.created).getTime();
+        return lastActivity >= oneDayAgo;
+    });
     if (activeIncidents.some(inc => inc.severity === 'major')) return 'outage';
     if (activeIncidents.length > 0) return 'degraded';
 
-    // Check last 24 hours
+    // Check last 24 hours from daily status
     const today = dailyStatus[dailyStatus.length - 1];
     if (today?.status === 'outage') return 'outage';
     if (today?.status === 'degraded') return 'degraded';
