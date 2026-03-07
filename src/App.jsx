@@ -325,7 +325,7 @@ function App() {
                     <Menu size={20} />
                 </button>
                 <div className="mobile-logo">
-                    <img src={`${import.meta.env.BASE_URL}horus_scope_logo.png`} alt="Horus Scope" className="mobile-logo-img" />
+                    <img src={`${import.meta.env.BASE_URL}eye-of-horus.png`} alt="Horus Scope" className="mobile-logo-img" />
                     <span className="mobile-logo-text">HORUS SCOPE</span>
                 </div>
                 <div className="mobile-header-right">

@@ -167,7 +167,7 @@ const Sidebar = ({
             <div className="sidebar-header">
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-icon">
-                        <img src={`${import.meta.env.BASE_URL}horus_scope_logo.png`} alt="Horus Scope" className="sidebar-logo-img" />
+                        <img src={`${import.meta.env.BASE_URL}eye-of-horus.png`} alt="Horus Scope" className="sidebar-logo-img" />
                     </div>
                     {!isCollapsed && (
                         <div className="sidebar-logo-text">
