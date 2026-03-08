@@ -1,5 +1,32 @@
 import React, { useEffect } from 'react';
 import { X, ExternalLink, Clock, User, Share2, BookmarkPlus } from 'lucide-react';
+import DOMPurify from 'dompurify';
+
+// Only allow http: and https: URLs
+const isSafeUrl = (url) => {
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
+// Configure DOMPurify once
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+    }
+});
+
+const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre', 'img', 'figure', 'figcaption', 'span', 'div'];
+const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'class', 'target', 'rel'];
+
+const sanitizeHtml = (html) => {
+    if (!html) return '';
+    return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR });
+};
 
 const NewsModal = ({ article, onClose }) => {
     // Close on escape key
@@ -36,7 +63,9 @@ const NewsModal = ({ article, onClose }) => {
     };
 
     const handleReadMore = () => {
-        window.open(article.link, '_blank', 'noopener,noreferrer');
+        if (isSafeUrl(article.link)) {
+            window.open(article.link, '_blank', 'noopener,noreferrer');
+        }
     };
 
     const handleShare = async () => {
@@ -56,6 +85,8 @@ const NewsModal = ({ article, onClose }) => {
             alert('Link copied to clipboard!');
         }
     };
+
+    const safeLink = isSafeUrl(article.link) ? article.link : '#';
 
     return (
         <div className="news-modal-overlay" onClick={handleOverlayClick}>
@@ -129,7 +160,7 @@ const NewsModal = ({ article, onClose }) => {
                             <ExternalLink size={16} />
                         </button>
                         <p className="source-attribution">
-                            Source: <a href={article.link} target="_blank" rel="noopener noreferrer">
+                            Source: <a href={safeLink} target="_blank" rel="noopener noreferrer">
                                 {article.source.name}
                             </a>
                         </p>
@@ -138,39 +169,6 @@ const NewsModal = ({ article, onClose }) => {
             </div>
         </div>
     );
-};
-
-/**
- * Basic HTML sanitization to prevent XSS
- * Allows only safe tags for article content display
- */
-const sanitizeHtml = (html) => {
-    if (!html) return '';
-
-    // Create a temporary element
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-
-    // Remove script tags
-    const scripts = temp.querySelectorAll('script');
-    scripts.forEach(s => s.remove());
-
-    // Remove event handlers
-    const allElements = temp.querySelectorAll('*');
-    allElements.forEach(el => {
-        // Remove event handlers
-        Array.from(el.attributes).forEach(attr => {
-            if (attr.name.startsWith('on')) {
-                el.removeAttribute(attr.name);
-            }
-        });
-        // Remove javascript: urls
-        if (el.href && el.href.startsWith('javascript:')) {
-            el.removeAttribute('href');
-        }
-    });
-
-    return temp.innerHTML;
 };
 
 export default NewsModal;

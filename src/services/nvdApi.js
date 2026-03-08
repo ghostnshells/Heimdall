@@ -5,23 +5,15 @@
 // In production, you would use a backend proxy or serverless function
 const NVD_API_BASE = '/api/nvd';
 
-// NVD API Key - loaded from environment variable (NEVER hardcode API keys!)
-// In development, requests go through Vite proxy without auth (lower rate limit)
-// In production, all requests go through the backend which has the API key
-const NVD_API_KEY = import.meta.env.VITE_NVD_API_KEY || '';
-
-// Rate limiting configuration:
-// - WITH API key: 50 requests per 30 seconds = 600ms minimum delay (using 800ms to be safe)
-// - WITHOUT API key: 5 requests per 30 seconds = 6000ms minimum delay (using 6500ms to be safe)
+// API key is only used on the backend; frontend always uses the unauthenticated rate limit
 let lastRequestTime = 0;
 let consecutiveErrors = 0;
-const REQUEST_DELAY_WITH_KEY = 800;    // 0.8 seconds with API key
 const REQUEST_DELAY_NO_KEY = 6500;     // 6.5 seconds without API key (NVD enforces 5 requests/30 sec)
 const MAX_RETRY_DELAY = 60000;         // Max 60 seconds between retries after errors
 
-// Get dynamic delay based on API key presence and error state
+// Get dynamic delay based on error state
 const getRequestDelay = () => {
-    const baseDelay = NVD_API_KEY ? REQUEST_DELAY_WITH_KEY : REQUEST_DELAY_NO_KEY;
+    const baseDelay = REQUEST_DELAY_NO_KEY;
     // Exponential backoff on consecutive errors
     if (consecutiveErrors > 0) {
         const backoffDelay = Math.min(baseDelay * Math.pow(2, consecutiveErrors), MAX_RETRY_DELAY);
@@ -86,9 +78,7 @@ export const searchNVDByKeyword = async (keyword, startDate = null, endDate = nu
 
     try {
         const headers = {};
-        if (NVD_API_KEY) {
-            headers['apiKey'] = NVD_API_KEY;
-        }
+        // API key is managed server-side; frontend requests go through proxy
 
         const response = await fetch(`${NVD_API_BASE}?${params}`, { headers });
 
@@ -144,9 +134,7 @@ export const searchNVDByKeywordLastModified = async (keyword, startDate = null, 
 
     try {
         const headers = {};
-        if (NVD_API_KEY) {
-            headers['apiKey'] = NVD_API_KEY;
-        }
+        // API key is managed server-side; frontend requests go through proxy
 
         const response = await fetch(`${NVD_API_BASE}?${params}`, { headers });
 
@@ -210,9 +198,7 @@ export const searchNVDByCPE = async (vendor, product, startDate = null, endDate 
         console.log(`[NVD API] CPE search: ${vendor}:${product}, resultsPerPage=${resultsPerPage}`);
 
         const headers = {};
-        if (NVD_API_KEY) {
-            headers['apiKey'] = NVD_API_KEY;
-        }
+        // API key is managed server-side; frontend requests go through proxy
 
         const response = await fetch(url, { headers });
 
@@ -278,9 +264,7 @@ export const searchNVDByCPELastModified = async (vendor, product, startDate = nu
         console.log(`[NVD API] CPE lastMod search: ${vendor}:${product}, resultsPerPage=${resultsPerPage}`);
 
         const headers = {};
-        if (NVD_API_KEY) {
-            headers['apiKey'] = NVD_API_KEY;
-        }
+        // API key is managed server-side; frontend requests go through proxy
 
         const url = `${NVD_API_BASE}?${params}`;
         const response = await fetch(url, { headers });

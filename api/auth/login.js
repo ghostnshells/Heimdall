@@ -15,6 +15,11 @@ export default async function handler(req, res) {
         }
 
         const user = await validatePassword(email, password);
+
+        if (!user.emailVerified) {
+            return res.status(403).json({ error: 'Please verify your email before logging in.', code: 'EMAIL_NOT_VERIFIED' });
+        }
+
         const tokens = generateTokens(user.email);
         await storeRefreshToken(tokens.refreshToken, user.email);
 

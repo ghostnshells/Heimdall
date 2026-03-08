@@ -2,12 +2,16 @@
 
 import { requireAuth } from '../../server/lib/authMiddleware.js';
 import { getVulnStatus, setVulnStatus } from '../../server/lib/lifecycleService.js';
+import { validateCveId } from '../../server/lib/validation.js';
 
 export default requireAuth(async function handler(req, res) {
     const { cveId } = req.query;
 
     if (!cveId) {
         return res.status(400).json({ error: 'cveId query parameter is required' });
+    }
+    if (!validateCveId(cveId)) {
+        return res.status(400).json({ error: 'Invalid CVE ID format. Expected format: CVE-YYYY-NNNNN' });
     }
 
     const userId = req.user.email;

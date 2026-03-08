@@ -2,8 +2,11 @@
 // Express server with all API routes, enrichment pipeline, and scheduled cache refresh
 // Designed for Railway persistent server deployment (replaces Vercel serverless functions)
 
+import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import cron from 'node-cron';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -58,6 +61,7 @@ import {
     setBulkStatus
 } from './lib/lifecycleService.js';
 import { fetchCloudStatus, computeDailyStatus, computeOverallStatus } from './lib/cloudStatusService.js';
+import { validatePasswordStrength, validateCveId, validateTimeRange } from './lib/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,13 +81,16 @@ let lastRefreshResult = null;
 
 const corsOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-    : '*';
+    : process.env.NODE_ENV === 'production'
+        ? (console.warn('WARNING: CORS_ORIGIN is not set. Denying all cross-origin requests in production.'), false)
+        : 'http://localhost:5173';
 
 app.use(cors({
     origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
 
 // Serve static files from the built frontend (production)
@@ -113,12 +120,58 @@ function requireAuth(req, res, next) {
 }
 
 // ===================
+// Rate Limiters
+// ===================
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: { error: 'Too many login attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const signupLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3,
+    message: { error: 'Too many signup attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3,
+    message: { error: 'Too many password reset requests. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// ===================
+// Helpers
+// ===================
+
+function timingSafeCompare(a, b) {
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+    if (bufA.length !== bufB.length) {
+        // Compare against self to keep constant time, but return false
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+}
+
+// ===================
 // API Routes — Vulnerabilities
 // ===================
 
 app.get('/api/vulnerabilities', async (req, res) => {
     try {
         const timeRange = req.query.timeRange || '7d';
+        if (!validateTimeRange(timeRange)) {
+            return res.status(400).json({ error: 'Invalid timeRange. Must be one of: 24h, 7d, 30d, 90d, 119d' });
+        }
         const data = await getVulnData(timeRange);
 
         if (!data) {
@@ -155,7 +208,7 @@ app.get('/api/vulnerabilities', async (req, res) => {
 // ===================
 
 // POST /api/auth/login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
     try {
         const { email, password } = req.body || {};
 
@@ -164,6 +217,11 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         const user = await validatePassword(email, password);
+
+        if (!user.emailVerified) {
+            return res.status(403).json({ error: 'Please verify your email before logging in.', code: 'EMAIL_NOT_VERIFIED' });
+        }
+
         const tokens = generateTokens(user.email);
         await storeRefreshToken(tokens.refreshToken, user.email);
 
@@ -183,7 +241,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // POST /api/auth/signup
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', signupLimiter, async (req, res) => {
     try {
         const { email, password } = req.body || {};
 
@@ -191,8 +249,9 @@ app.post('/api/auth/signup', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        if (password.length < 8) {
-            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        const pwCheck = validatePasswordStrength(password);
+        if (!pwCheck.valid) {
+            return res.status(400).json({ error: pwCheck.error });
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -219,7 +278,7 @@ app.post('/api/auth/signup', async (req, res) => {
         });
     } catch (error) {
         if (error.message === 'User already exists') {
-            return res.status(409).json({ error: 'User already exists' });
+            return res.status(400).json({ error: 'Could not create account. Please try again or use a different email.' });
         }
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -231,10 +290,11 @@ app.post('/api/auth/logout', async (req, res) => {
     try {
         const { refreshToken } = req.body || {};
 
-        if (refreshToken) {
-            await revokeRefreshToken(refreshToken);
+        if (!refreshToken) {
+            return res.status(400).json({ error: 'Refresh token is required' });
         }
 
+        await revokeRefreshToken(refreshToken);
         res.json({ success: true });
     } catch (error) {
         console.error('Logout error:', error);
@@ -332,7 +392,7 @@ app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
 });
 
 // POST /api/auth/forgot-password
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
     try {
         const { email } = req.body || {};
         if (!email) {
@@ -358,8 +418,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
         if (!token || !password) {
             return res.status(400).json({ error: 'Token and password are required' });
         }
-        if (password.length < 8) {
-            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        const pwCheck = validatePasswordStrength(password);
+        if (!pwCheck.valid) {
+            return res.status(400).json({ error: pwCheck.error });
         }
 
         await resetPassword(token, password);
@@ -462,6 +523,9 @@ app.get('/api/lifecycle/status', requireAuth, async (req, res) => {
     if (!cveId) {
         return res.status(400).json({ error: 'cveId query parameter is required' });
     }
+    if (!validateCveId(cveId)) {
+        return res.status(400).json({ error: 'Invalid CVE ID format. Expected format: CVE-YYYY-NNNNN' });
+    }
 
     try {
         const status = await getVulnStatus(req.user.email, cveId);
@@ -477,6 +541,9 @@ app.put('/api/lifecycle/status', requireAuth, async (req, res) => {
 
     if (!cveId) {
         return res.status(400).json({ error: 'cveId query parameter is required' });
+    }
+    if (!validateCveId(cveId)) {
+        return res.status(400).json({ error: 'Invalid CVE ID format. Expected format: CVE-YYYY-NNNNN' });
     }
 
     try {
@@ -504,6 +571,9 @@ app.get('/api/lifecycle/audit', requireAuth, async (req, res) => {
     if (!cveId) {
         return res.status(400).json({ error: 'cveId query parameter is required' });
     }
+    if (!validateCveId(cveId)) {
+        return res.status(400).json({ error: 'Invalid CVE ID format. Expected format: CVE-YYYY-NNNNN' });
+    }
 
     try {
         const trail = await getAuditTrail(req.user.email, cveId);
@@ -527,8 +597,14 @@ app.get('/api/lifecycle/sla', requireAuth, async (req, res) => {
 
 app.put('/api/lifecycle/sla', requireAuth, async (req, res) => {
     try {
-        const config = req.body || {};
-        const result = await setSLAConfig(req.user.email, config);
+        const { critical, high, medium, low } = req.body || {};
+        const fields = { critical, high, medium, low };
+        for (const [key, val] of Object.entries(fields)) {
+            if (val !== undefined && (typeof val !== 'number' || val < 1 || val > 365)) {
+                return res.status(400).json({ error: `${key} must be a number between 1 and 365` });
+            }
+        }
+        const result = await setSLAConfig(req.user.email, fields);
         res.json({ success: true, data: result });
     } catch (error) {
         console.error('Set SLA error:', error);
@@ -551,6 +627,11 @@ app.post('/api/lifecycle/bulk', requireAuth, async (req, res) => {
 
         if (cveIds.length > 100) {
             return res.status(400).json({ error: 'Maximum 100 CVEs per bulk update' });
+        }
+
+        const invalidCve = cveIds.find(id => !validateCveId(id));
+        if (invalidCve) {
+            return res.status(400).json({ error: `Invalid CVE ID format: ${invalidCve}. Expected format: CVE-YYYY-NNNNN` });
         }
 
         const results = await setBulkStatus(req.user.email, cveIds, status, notes || '');
@@ -668,12 +749,14 @@ app.get('/api/health', async (req, res) => {
         checks: {}
     };
 
-    // Check environment variables
-    results.checks.env = {
-        DATABASE_URL: !!process.env.DATABASE_URL,
-        NVD_API_KEY: !!process.env.NVD_API_KEY,
-        JWT_SECRET: !!process.env.JWT_SECRET,
-    };
+    // Check environment variables (only in development)
+    if (process.env.NODE_ENV === 'development') {
+        results.checks.env = {
+            DATABASE_URL: !!process.env.DATABASE_URL,
+            NVD_API_KEY: !!process.env.NVD_API_KEY,
+            JWT_SECRET: !!process.env.JWT_SECRET,
+        };
+    }
 
     // Check database connection
     try {
@@ -730,7 +813,7 @@ app.post('/api/refresh', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const expectedKey = process.env.ADMIN_API_KEY;
 
-    if (expectedKey && apiKey !== expectedKey) {
+    if (!expectedKey || !apiKey || !timingSafeCompare(expectedKey, apiKey)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

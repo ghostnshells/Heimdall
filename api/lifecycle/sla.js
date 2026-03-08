@@ -18,8 +18,14 @@ export default requireAuth(async function handler(req, res) {
 
     if (req.method === 'PUT') {
         try {
-            const config = req.body || {};
-            const result = await setSLAConfig(userId, config);
+            const { critical, high, medium, low } = req.body || {};
+            const fields = { critical, high, medium, low };
+            for (const [key, val] of Object.entries(fields)) {
+                if (val !== undefined && (typeof val !== 'number' || val < 1 || val > 365)) {
+                    return res.status(400).json({ error: `${key} must be a number between 1 and 365` });
+                }
+            }
+            const result = await setSLAConfig(userId, fields);
             return res.json({ success: true, data: result });
         } catch (error) {
             console.error('Set SLA error:', error);

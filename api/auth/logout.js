@@ -10,10 +10,11 @@ export default async function handler(req, res) {
     try {
         const { refreshToken } = req.body || {};
 
-        if (refreshToken) {
-            await revokeRefreshToken(refreshToken);
+        if (!refreshToken) {
+            return res.status(400).json({ error: 'Refresh token is required' });
         }
 
+        await revokeRefreshToken(refreshToken);
         res.json({ success: true });
     } catch (error) {
         console.error('Logout error:', error);

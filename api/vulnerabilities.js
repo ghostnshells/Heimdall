@@ -1,6 +1,7 @@
 // Vercel Serverless Function — serves cached vulnerability data from Upstash Redis
 
 import { getVulnData, getCacheMetadata } from '../server/lib/redis.js';
+import { validateTimeRange } from '../server/lib/validation.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
@@ -9,6 +10,9 @@ export default async function handler(req, res) {
 
     try {
         const timeRange = req.query.timeRange || '7d';
+        if (!validateTimeRange(timeRange)) {
+            return res.status(400).json({ error: 'Invalid timeRange. Must be one of: 24h, 7d, 30d, 90d, 119d' });
+        }
         const data = await getVulnData(timeRange);
 
         if (!data) {

@@ -1,6 +1,7 @@
 // POST /api/auth/signup — Create new user account
 
 import { createUser, generateTokens, storeRefreshToken } from '../../server/lib/auth.js';
+import { validatePasswordStrength } from '../../server/lib/validation.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -14,8 +15,9 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        if (password.length < 8) {
-            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        const pwCheck = validatePasswordStrength(password);
+        if (!pwCheck.valid) {
+            return res.status(400).json({ error: pwCheck.error });
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
         });
     } catch (error) {
         if (error.message === 'User already exists') {
-            return res.status(409).json({ error: 'User already exists' });
+            return res.status(400).json({ error: 'Could not create account. Please try again or use a different email.' });
         }
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Internal server error' });

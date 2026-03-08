@@ -6,7 +6,10 @@ import jwt from 'jsonwebtoken';
 import pool from './db.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from './emailService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'horus-scope-dev-secret-change-me';
+if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start without it.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 

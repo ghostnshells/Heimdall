@@ -2,6 +2,7 @@
 
 import { requireAuth } from '../../server/lib/authMiddleware.js';
 import { setBulkStatus } from '../../server/lib/lifecycleService.js';
+import { validateCveId } from '../../server/lib/validation.js';
 
 export default requireAuth(async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -21,6 +22,11 @@ export default requireAuth(async function handler(req, res) {
 
         if (cveIds.length > 100) {
             return res.status(400).json({ error: 'Maximum 100 CVEs per bulk update' });
+        }
+
+        const invalidCve = cveIds.find(id => !validateCveId(id));
+        if (invalidCve) {
+            return res.status(400).json({ error: `Invalid CVE ID format: ${invalidCve}. Expected format: CVE-YYYY-NNNNN` });
         }
 
         const results = await setBulkStatus(req.user.email, cveIds, status, notes || '');

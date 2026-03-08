@@ -25,11 +25,9 @@ let ciscoCache = {
     tokenExpiry: null
 };
 
-// Get credentials from environment
+// Credentials must be configured on the backend proxy, never in the frontend
 const getCredentials = () => {
-    const clientId = import.meta.env.VITE_CISCO_CLIENT_ID || '';
-    const clientSecret = import.meta.env.VITE_CISCO_CLIENT_SECRET || '';
-    return { clientId, clientSecret };
+    return { clientId: '', clientSecret: '' };
 };
 
 /**

@@ -6,14 +6,16 @@ export default async function handler(req, res) {
         checks: {}
     };
 
-    // Test 1: Environment variables
-    results.checks.env = {
-        UPSTASH_REDIS_REST_URL: !!process.env.UPSTASH_REDIS_REST_URL,
-        UPSTASH_REDIS_REST_TOKEN: !!process.env.UPSTASH_REDIS_REST_TOKEN,
-        NVD_API_KEY: !!process.env.NVD_API_KEY,
-        CRON_SECRET: !!process.env.CRON_SECRET,
-        FIRST_EPSS_API_KEY: !!process.env.FIRST_EPSS_API_KEY
-    };
+    // Test 1: Environment variables (only in development)
+    if (process.env.NODE_ENV === 'development') {
+        results.checks.env = {
+            UPSTASH_REDIS_REST_URL: !!process.env.UPSTASH_REDIS_REST_URL,
+            UPSTASH_REDIS_REST_TOKEN: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+            NVD_API_KEY: !!process.env.NVD_API_KEY,
+            CRON_SECRET: !!process.env.CRON_SECRET,
+            FIRST_EPSS_API_KEY: !!process.env.FIRST_EPSS_API_KEY
+        };
+    }
 
     // Test 2: Import Redis module
     try {
@@ -38,7 +40,7 @@ export default async function handler(req, res) {
         results.checks.redisImport = {
             success: false,
             error: error.message,
-            stack: error.stack
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         };
     }
 
@@ -67,7 +69,7 @@ export default async function handler(req, res) {
         results.checks.nvdServiceImport = {
             success: false,
             error: error.message,
-            stack: error.stack
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         };
     }
 
