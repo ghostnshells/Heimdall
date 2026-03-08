@@ -333,6 +333,58 @@
     gap: var(--space-3);
 }
 
+/* Incident Search */
+.incident-search {
+    position: relative;
+    margin-bottom: var(--space-1);
+}
+
+.incident-search-icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.incident-search-input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 22px);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    outline: none;
+    transition: all var(--transition-fast);
+    box-sizing: border-box;
+}
+
+.incident-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.incident-search-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.incident-feed-no-results {
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Incident Region Badge */
+.incident-region-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-tertiary);
+}
+
 .incident-feed-empty {
     display: flex;
     flex-direction: column;

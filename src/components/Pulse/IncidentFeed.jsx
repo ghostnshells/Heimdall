@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { CheckCircle, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { CheckCircle, ChevronDown, Search, MapPin } from 'lucide-react';
+import { CLOUD_REGIONS } from '../../data/cloudRegions';
 
 const PROVIDER_LABELS = {
     aws: 'AWS',
     gcp: 'GCP',
     azure: 'Azure',
     m365: 'M365',
+};
+
+const getRegionLabel = (providerId, regionId) => {
+    if (regionId === 'global') return 'Global';
+    const config = CLOUD_REGIONS[providerId];
+    if (!config) return regionId;
+    const region = config.regions.find(r => r.id === regionId);
+    return region ? region.name : regionId;
 };
 
 const formatTimeAgo = (dateStr) => {
@@ -44,6 +53,15 @@ const IncidentItem = ({ incident, providerId }) => {
                             {incident.status}
                         </span>
                         <span>{formatTimeAgo(incident.created)}</span>
+                        {incident.regions?.length > 0 && (
+                            <span className="incident-region-badge">
+                                <MapPin size={10} />
+                                {incident.regions.length <= 2
+                                    ? incident.regions.map(r => getRegionLabel(providerId, r)).join(', ')
+                                    : `${getRegionLabel(providerId, incident.regions[0])} +${incident.regions.length - 1} more`
+                                }
+                            </span>
+                        )}
                         {incident.affectedServices?.length > 0 && (
                             <span>{incident.affectedServices[0]}</span>
                         )}
@@ -93,12 +111,35 @@ const IncidentItem = ({ incident, providerId }) => {
 };
 
 const IncidentFeed = ({ providers = {} }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+
     // Merge all incidents from all providers, tagged with providerId
-    const allIncidents = Object.entries(providers)
-        .flatMap(([providerId, provider]) =>
-            (provider.incidents || []).map(inc => ({ ...inc, providerId }))
-        )
-        .sort((a, b) => new Date(b.created) - new Date(a.created));
+    const allIncidents = useMemo(() =>
+        Object.entries(providers)
+            .flatMap(([providerId, provider]) =>
+                (provider.incidents || []).map(inc => ({ ...inc, providerId }))
+            )
+            .sort((a, b) => new Date(b.created) - new Date(a.created)),
+        [providers]
+    );
+
+    // Filter incidents by search query
+    const filteredIncidents = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return allIncidents;
+        return allIncidents.filter(inc => {
+            const regionNames = (inc.regions || []).map(r => getRegionLabel(inc.providerId, r).toLowerCase()).join(' ');
+            const searchableText = [
+                inc.title,
+                inc.description,
+                inc.status,
+                PROVIDER_LABELS[inc.providerId] || inc.providerId,
+                ...(inc.affectedServices || []),
+                regionNames,
+            ].join(' ').toLowerCase();
+            return searchableText.includes(query);
+        });
+    }, [allIncidents, searchQuery]);
 
     if (allIncidents.length === 0) {
         return (
@@ -114,13 +155,29 @@ const IncidentFeed = ({ providers = {} }) => {
 
     return (
         <div className="incident-feed">
-            {allIncidents.map(incident => (
-                <IncidentItem
-                    key={incident.id}
-                    incident={incident}
-                    providerId={incident.providerId}
+            <div className="incident-search">
+                <Search size={14} className="incident-search-icon" />
+                <input
+                    type="text"
+                    className="incident-search-input"
+                    placeholder="Search incidents..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
                 />
-            ))}
+            </div>
+            {filteredIncidents.length === 0 ? (
+                <div className="incident-feed-no-results">
+                    No incidents matching "{searchQuery}"
+                </div>
+            ) : (
+                filteredIncidents.map(incident => (
+                    <IncidentItem
+                        key={incident.id}
+                        incident={incident}
+                        providerId={incident.providerId}
+                    />
+                ))
+            )}
         </div>
     );
 };
