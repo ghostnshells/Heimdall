@@ -1,23 +1,20 @@
 // Frontend authentication service
 // Handles token storage, auto-refresh, and authenticated API calls
+// Access token: in-memory only (module-scoped variable)
+// Refresh token: httpOnly cookie (managed by server, invisible to JS)
+// User info: localStorage (non-sensitive display data)
 
 const AUTH_API = '/api/auth';
-const TOKEN_KEY = 'horus_scope_access_token';
-const REFRESH_KEY = 'horus_scope_refresh_token';
 const USER_KEY = 'horus_scope_user';
 
-/**
- * Get stored access token
- */
-export function getAccessToken() {
-    return localStorage.getItem(TOKEN_KEY);
-}
+// In-memory access token — lost on page reload, restored via silent refresh
+let accessToken = null;
 
 /**
- * Get stored refresh token
+ * Get stored access token (from memory)
  */
-export function getRefreshToken() {
-    return localStorage.getItem(REFRESH_KEY);
+export function getAccessToken() {
+    return accessToken;
 }
 
 /**
@@ -33,11 +30,10 @@ export function getStoredUser() {
 }
 
 /**
- * Store tokens and user info
+ * Store access token and user info
  */
-export function storeAuth(accessToken, refreshToken, user) {
-    localStorage.setItem(TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
+export function storeAuth(token, user) {
+    accessToken = token;
     if (user) {
         localStorage.setItem(USER_KEY, JSON.stringify(user));
     }
@@ -57,16 +53,15 @@ export function updateStoredUser(updates) {
  * Clear all auth data
  */
 export function clearAuth() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    accessToken = null;
     localStorage.removeItem(USER_KEY);
 }
 
 /**
- * Check if user is authenticated (has tokens)
+ * Check if user is authenticated (has access token in memory)
  */
 export function isAuthenticated() {
-    return !!getAccessToken();
+    return !!accessToken;
 }
 
 /**
@@ -76,6 +71,7 @@ export async function signup(email, password) {
     const response = await fetch(`${AUTH_API}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password })
     });
 
@@ -85,7 +81,7 @@ export async function signup(email, password) {
         throw new Error(data.error || 'Signup failed');
     }
 
-    storeAuth(data.accessToken, data.refreshToken, data.user);
+    storeAuth(data.accessToken, data.user);
     return data.user;
 }
 
@@ -96,6 +92,7 @@ export async function login(email, password) {
     const response = await fetch(`${AUTH_API}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password })
     });
 
@@ -105,23 +102,18 @@ export async function login(email, password) {
         throw new Error(data.error || 'Login failed');
     }
 
-    storeAuth(data.accessToken, data.refreshToken, data.user);
+    storeAuth(data.accessToken, data.user);
     return data.user;
 }
 
 /**
- * Refresh the access token using the refresh token
+ * Refresh the access token using the httpOnly refresh token cookie
  */
 export async function refreshTokens() {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-        throw new Error('No refresh token available');
-    }
-
     const response = await fetch(`${AUTH_API}/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken })
+        credentials: 'include'
     });
 
     const data = await response.json();
@@ -131,24 +123,20 @@ export async function refreshTokens() {
         throw new Error(data.error || 'Token refresh failed');
     }
 
-    storeAuth(data.accessToken, data.refreshToken, getStoredUser());
+    accessToken = data.accessToken;
     return data.accessToken;
 }
 
 /**
- * Log out — revoke refresh token and clear local storage
+ * Log out — server revokes refresh token and clears cookie
  */
 export async function logout() {
-    const refreshToken = getRefreshToken();
-
     try {
-        if (refreshToken) {
-            await fetch(`${AUTH_API}/logout`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken })
-            });
-        }
+        await fetch(`${AUTH_API}/logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
     } catch {
         // Best effort — clear local state regardless
     }
@@ -160,14 +148,13 @@ export async function logout() {
  * Fetch with automatic token refresh on 401
  */
 export async function fetchWithAuth(url, options = {}) {
-    const accessToken = getAccessToken();
-
     if (!accessToken) {
         throw new Error('Not authenticated');
     }
 
     const authOptions = {
         ...options,
+        credentials: 'include',
         headers: {
             ...options.headers,
             'Authorization': `Bearer ${accessToken}`
@@ -212,6 +199,7 @@ export async function verifyEmailToken(token) {
     const response = await fetch(`${AUTH_API}/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token })
     });
 
@@ -244,6 +232,7 @@ export async function forgotPassword(email) {
     const response = await fetch(`${AUTH_API}/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email })
     });
 
@@ -261,6 +250,7 @@ export async function resetPasswordWithToken(token, password) {
     const response = await fetch(`${AUTH_API}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token, password })
     });
 

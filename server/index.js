@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import cron from 'node-cron';
 import path from 'path';
@@ -91,6 +92,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cookieParser());
 app.use(express.json());
 
 // Serve static files from the built frontend (production)
@@ -150,6 +152,25 @@ const forgotPasswordLimiter = rateLimit({
 // ===================
 // Helpers
 // ===================
+
+function setRefreshTokenCookie(res, token) {
+    res.cookie('refreshToken', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+}
+
+function clearRefreshTokenCookie(res) {
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth'
+    });
+}
 
 function timingSafeCompare(a, b) {
     const bufA = Buffer.from(a, 'utf8');
@@ -225,11 +246,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         const tokens = generateTokens(user.email);
         await storeRefreshToken(tokens.refreshToken, user.email);
 
+        setRefreshTokenCookie(res, tokens.refreshToken);
         res.json({
             success: true,
             user,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
+            accessToken: tokens.accessToken
         });
     } catch (error) {
         if (error.message === 'Invalid credentials') {
@@ -270,11 +291,11 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
             console.warn('Failed to send verification email:', emailErr.message);
         }
 
+        setRefreshTokenCookie(res, tokens.refreshToken);
         res.status(201).json({
             success: true,
             user,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
+            accessToken: tokens.accessToken
         });
     } catch (error) {
         if (error.message === 'User already exists') {
@@ -288,13 +309,13 @@ app.post('/api/auth/signup', signupLimiter, async (req, res) => {
 // POST /api/auth/logout
 app.post('/api/auth/logout', async (req, res) => {
     try {
-        const { refreshToken } = req.body || {};
+        const refreshToken = req.cookies?.refreshToken;
 
-        if (!refreshToken) {
-            return res.status(400).json({ error: 'Refresh token is required' });
+        if (refreshToken) {
+            await revokeRefreshToken(refreshToken);
         }
 
-        await revokeRefreshToken(refreshToken);
+        clearRefreshTokenCookie(res);
         res.json({ success: true });
     } catch (error) {
         console.error('Logout error:', error);
@@ -305,7 +326,7 @@ app.post('/api/auth/logout', async (req, res) => {
 // POST /api/auth/refresh
 app.post('/api/auth/refresh', async (req, res) => {
     try {
-        const { refreshToken } = req.body || {};
+        const refreshToken = req.cookies?.refreshToken;
 
         if (!refreshToken) {
             return res.status(400).json({ error: 'Refresh token is required' });
@@ -327,10 +348,10 @@ app.post('/api/auth/refresh', async (req, res) => {
         const tokens = generateTokens(decoded.email);
         await storeRefreshToken(tokens.refreshToken, decoded.email);
 
+        setRefreshTokenCookie(res, tokens.refreshToken);
         res.json({
             success: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
+            accessToken: tokens.accessToken
         });
     } catch (error) {
         if (error.message.includes('Invalid') || error.message.includes('expired')) {

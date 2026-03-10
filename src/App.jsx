@@ -19,9 +19,12 @@ import {
 import {
     isAuthenticated,
     getStoredUser,
+    getAccessToken,
     login as authLogin,
     signup as authSignup,
     logout as authLogout,
+    refreshTokens,
+    clearAuth,
     updateStoredUser,
     resendVerification
 } from './services/authService';
@@ -48,8 +51,21 @@ function App() {
 
     // Auth state
     const [user, setUser] = useState(getStoredUser());
-    const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
+    const [isLoggedIn, setIsLoggedIn] = useState(!!getStoredUser());
     const [showLoginModal, setShowLoginModal] = useState(false);
+
+    // Silent refresh on page reload: user info exists but access token was lost from memory
+    useEffect(() => {
+        if (getStoredUser() && !getAccessToken()) {
+            refreshTokens()
+                .then(() => setIsLoggedIn(true))
+                .catch(() => {
+                    clearAuth();
+                    setUser(null);
+                    setIsLoggedIn(false);
+                });
+        }
+    }, []);
 
     // Auth flow views
     const [authView, setAuthView] = useState(null); // null | 'forgot' | 'reset' | 'verify' | 'settings'

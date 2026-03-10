@@ -7,6 +7,7 @@ import {
     generateTokens,
     storeRefreshToken
 } from '../../server/lib/auth.js';
+import { parseCookies, serializeRefreshTokenCookie } from './_cookies.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -14,7 +15,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { refreshToken } = req.body || {};
+        const cookies = parseCookies(req);
+        const refreshToken = cookies.refreshToken;
 
         if (!refreshToken) {
             return res.status(400).json({ error: 'Refresh token is required' });
@@ -36,10 +38,10 @@ export default async function handler(req, res) {
         const tokens = generateTokens(decoded.email);
         await storeRefreshToken(tokens.refreshToken, decoded.email);
 
+        res.setHeader('Set-Cookie', serializeRefreshTokenCookie(tokens.refreshToken));
         res.json({
             success: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
+            accessToken: tokens.accessToken
         });
     } catch (error) {
         if (error.message.includes('Invalid') || error.message.includes('expired')) {

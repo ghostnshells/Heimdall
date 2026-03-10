@@ -29,6 +29,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/cisa/, '/sites/default/files/feeds'),
         secure: true
+      },
+      // Proxy all other /api routes to Express backend (auth, user, lifecycle, etc.)
+      // Must come after the more specific NVD/CISA proxies
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }
