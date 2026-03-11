@@ -91,7 +91,18 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"],
+        }
+    }
+}));
 app.use(cookieParser());
 app.use(express.json());
 
@@ -149,6 +160,22 @@ const forgotPasswordLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+const resendVerificationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3,
+    message: { error: 'Too many verification email requests. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const publicApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100,
+    message: { error: 'Too many requests. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // ===================
 // Helpers
 // ===================
@@ -187,7 +214,7 @@ function timingSafeCompare(a, b) {
 // API Routes — Vulnerabilities
 // ===================
 
-app.get('/api/vulnerabilities', async (req, res) => {
+app.get('/api/vulnerabilities', publicApiLimiter, async (req, res) => {
     try {
         const timeRange = req.query.timeRange || '7d';
         if (!validateTimeRange(timeRange)) {
@@ -219,7 +246,6 @@ app.get('/api/vulnerabilities', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Internal server error',
-            message: error.message
         });
     }
 });
@@ -402,7 +428,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
 });
 
 // POST /api/auth/resend-verification
-app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
+app.post('/api/auth/resend-verification', requireAuth, resendVerificationLimiter, async (req, res) => {
     try {
         await requestEmailVerification(req.user.email);
         res.json({ success: true });
@@ -673,10 +699,15 @@ app.post('/api/lifecycle/bulk', requireAuth, async (req, res) => {
 const CLOUD_STATUS_CACHE_KEY = 'cloud:status';
 const CLOUD_STATUS_CACHE_TTL = 300; // 5 minutes
 
-app.get('/api/cloud-status', async (req, res) => {
+app.get('/api/cloud-status', publicApiLimiter, async (req, res) => {
     try {
         const forceRefresh = req.query.refresh === 'true';
         const regionsParam = req.query.regions; // e.g. "aws:us-east-1,us-west-2|gcp:us-central1"
+
+        // M3: Guard against excessively long regions parameter
+        if (regionsParam && regionsParam.length > 500) {
+            return res.status(400).json({ error: 'regions parameter too long' });
+        }
 
         let data;
         let wasCached = false;
@@ -755,7 +786,6 @@ app.get('/api/cloud-status', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch cloud status',
-            message: error.message,
         });
     }
 });
@@ -764,7 +794,7 @@ app.get('/api/cloud-status', async (req, res) => {
 // API Routes — Health
 // ===================
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', publicApiLimiter, async (req, res) => {
     const results = {
         timestamp: new Date().toISOString(),
         checks: {}
@@ -784,7 +814,7 @@ app.get('/api/health', async (req, res) => {
         await cache.ping();
         results.checks.database = { success: true };
     } catch (error) {
-        results.checks.database = { success: false, error: error.message };
+        results.checks.database = { success: false, error: 'Database connection failed' };
     }
 
     // Check assets
@@ -819,14 +849,11 @@ app.get('/api/health', async (req, res) => {
 // API Routes — Cache Status & Manual Refresh
 // ===================
 
-app.get('/api/status', async (req, res) => {
+app.get('/api/status', publicApiLimiter, async (req, res) => {
     const metadata = await getCacheMetadata();
     res.json({
         status: 'online',
-        isRefreshing,
-        uptime: process.uptime(),
         lastUpdated: metadata.lastUpdated,
-        lastRefreshResult
     });
 });
 

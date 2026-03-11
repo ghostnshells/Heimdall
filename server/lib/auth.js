@@ -81,13 +81,13 @@ export function generateTokens(email) {
     const accessToken = jwt.sign(
         { email, type: 'access' },
         JWT_SECRET,
-        { expiresIn: ACCESS_TOKEN_EXPIRY }
+        { algorithm: 'HS256', expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
     const refreshToken = jwt.sign(
         { email, type: 'refresh' },
         JWT_SECRET,
-        { expiresIn: '7d' }
+        { algorithm: 'HS256', expiresIn: '7d' }
     );
 
     return { accessToken, refreshToken };
@@ -98,7 +98,7 @@ export function generateTokens(email) {
  */
 export function verifyAccessToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.type !== 'access') {
             throw new Error('Invalid token type');
         }
@@ -113,7 +113,7 @@ export function verifyAccessToken(token) {
  */
 export function verifyRefreshToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded.type !== 'refresh') {
             throw new Error('Invalid token type');
         }
@@ -270,9 +270,11 @@ export async function requestPasswordReset(email) {
 export async function resetPassword(rawToken, newPassword) {
     const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
+    // Atomic: mark token as used and retrieve email in one query to prevent race conditions
     const { rows } = await pool.query(
-        `SELECT email FROM password_reset_tokens
-         WHERE token_hash = $1 AND expires_at > NOW() AND used = FALSE`,
+        `UPDATE password_reset_tokens SET used = TRUE
+         WHERE token_hash = $1 AND expires_at > NOW() AND used = FALSE
+         RETURNING email`,
         [hash]
     );
 
@@ -287,12 +289,6 @@ export async function resetPassword(rawToken, newPassword) {
     await pool.query(
         `UPDATE users SET password_hash = $1 WHERE email = $2`,
         [passwordHash, email]
-    );
-
-    // Mark token as used
-    await pool.query(
-        `UPDATE password_reset_tokens SET used = TRUE WHERE token_hash = $1`,
-        [hash]
     );
 
     // Invalidate all sessions (force re-login)

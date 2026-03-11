@@ -18,6 +18,12 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
         node.setAttribute('target', '_blank');
         node.setAttribute('rel', 'noopener noreferrer');
     }
+    // Validate src attributes on images to prevent tracking/exfiltration
+    if (node.tagName === 'IMG' && node.hasAttribute('src')) {
+        if (!isSafeUrl(node.getAttribute('src'))) {
+            node.removeAttribute('src');
+        }
+    }
 });
 
 const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre', 'img', 'figure', 'figcaption', 'span', 'div'];
