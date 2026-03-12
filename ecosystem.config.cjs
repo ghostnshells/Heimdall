@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'horus-scope',
+    name: 'panoptes',
     script: 'server/index.js',
     instances: 1,
     autorestart: true,

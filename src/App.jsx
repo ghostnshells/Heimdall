@@ -341,8 +341,8 @@ function App() {
                     <Menu size={20} />
                 </button>
                 <div className="mobile-logo">
-                    <img src={`${import.meta.env.BASE_URL}eye-of-horus.png`} alt="Horus Scope" className="mobile-logo-img" />
-                    <span className="mobile-logo-text">HORUS SCOPE</span>
+                    <img src={`${import.meta.env.BASE_URL}panoptes-logo.png`} alt="Panoptes" className="mobile-logo-img" />
+                    <span className="mobile-logo-text">PANOPTES</span>
                 </div>
                 <div className="mobile-header-right">
                     {isLoggedIn ? (

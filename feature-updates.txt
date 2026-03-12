@@ -1,5 +1,5 @@
 
-HORUS SCOPE - FEATURE UPDATE CANDIDATES
+PANOPTES - FEATURE UPDATE CANDIDATES
 =====================================
 (Status: Approved for Implementation)
 

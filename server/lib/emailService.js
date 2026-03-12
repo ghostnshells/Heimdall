@@ -3,7 +3,7 @@
 import { Resend } from 'resend';
 
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Horus Scope <noreply@horus-scope.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Panoptes <noreply@panoptes.net>';
 
 let resend;
 function getResend() {
@@ -27,7 +27,7 @@ p{color:#9ca3af;font-size:14px;line-height:1.6;margin:0 0 16px}
 .btn{display:inline-block;padding:12px 32px;background:#37a8a8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px}
 .footer{color:#6b7280;font-size:12px;margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)}
 </style></head><body><div class="card">
-<h1>HORUS SCOPE</h1>
+<h1>PANOPTES</h1>
 <h2>${title}</h2>
 ${body}
 </div></body></html>`;
@@ -45,7 +45,7 @@ export async function sendVerificationEmail(email, token) {
     await getResend().emails.send({
         from: FROM_EMAIL,
         to: email,
-        subject: 'Verify your Horus Scope email',
+        subject: 'Verify your Panoptes email',
         html
     });
 }
@@ -62,7 +62,7 @@ export async function sendPasswordResetEmail(email, token) {
     await getResend().emails.send({
         from: FROM_EMAIL,
         to: email,
-        subject: 'Reset your Horus Scope password',
+        subject: 'Reset your Panoptes password',
         html
     });
 }

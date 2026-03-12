@@ -4,13 +4,13 @@
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <VERCEL_URL>"
-    echo "Example: $0 https://horus-scope.vercel.app"
+    echo "Example: $0 https://panoptes.net"
     exit 1
 fi
 
 VERCEL_URL="$1"
 
-echo "🔍 Horus Scope Cache Diagnostic"
+echo "🔍 Panoptes Cache Diagnostic"
 echo "================================"
 echo ""
 

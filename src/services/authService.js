@@ -5,7 +5,7 @@
 // User info: localStorage (non-sensitive display data)
 
 const AUTH_API = '/api/auth';
-const USER_KEY = 'horus_scope_user';
+const USER_KEY = 'panoptes_user';
 
 // In-memory access token — lost on page reload, restored via silent refresh
 let accessToken = null;

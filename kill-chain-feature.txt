@@ -1,0 +1,211 @@
+# Kill Chain Composer — Implementation Plan
+
+## Context
+
+Panoptes already enriches every CVE with ATT&CK techniques, EPSS scores, and threat actor associations — but displays them as isolated metadata on individual CVEs. The Kill Chain Composer synthesizes this data into **attack chains**: sequences of vulnerabilities spanning multiple kill chain stages that model how an adversary could move through the user's infrastructure. It answers: *"What's the most dangerous path through my stack, and what single patch breaks the most paths?"*
+
+No new external APIs needed — this is a pure synthesis layer on top of existing enriched vulnerability data.
+
+---
+
+## Implementation Sequence
+
+### Step 1 — Backend Service: `server/lib/killChainService.js` (new file)
+
+**Core data structures:**
+
+```js
+// Maps ATT&CK technique IDs → ordered kill chain stages
+const KILL_CHAIN_STAGES = {
+  initial_access:       { order: 1,  label: 'Initial Access',       techniques: ['T1190','T1133','T1566','T1078','T1189'] },
+  execution:            { order: 2,  label: 'Execution',            techniques: ['T1059','T1203'] },
+  persistence:          { order: 3,  label: 'Persistence',          techniques: ['T1505'] },
+  privilege_escalation: { order: 4,  label: 'Privilege Escalation', techniques: ['T1068'] },
+  defense_evasion:      { order: 5,  label: 'Defense Evasion',      techniques: ['T1211'] },
+  credential_access:    { order: 6,  label: 'Credential Access',    techniques: ['T1212'] },
+  lateral_movement:     { order: 7,  label: 'Lateral Movement',     techniques: ['T1210'] },
+  collection:           { order: 8,  label: 'Collection',           techniques: ['T1005'] },
+  exfiltration:         { order: 9,  label: 'Exfiltration',         techniques: ['T1567'] },
+  impact:               { order: 10, label: 'Impact',               techniques: ['T1499','T1486','T1565'] },
+};
+// + reverse index: TECHNIQUE_TO_STAGE built at module init
+```
+
+**Algorithm — `computeKillChains(vulnData, userAssets)`:**
+
+1. **Classify** — Filter vulns to `userAssets` (if set). For each CVE with `attackTechniques`, look up `TECHNIQUE_TO_STAGE` → build `Map<stageKey, CVE[]>`. If < 3 stages have CVEs, return empty result.
+
+2. **Build chains** — Greedy forward walk, not exhaustive enumeration:
+   - For each entry-point stage (`initial_access`, `execution`, `persistence`):
+     - For each CVE in that stage:
+       - Walk forward through ascending stages, at each stage picking the CVE that (a) is on a **different asset** than previous step (prefer cross-asset), or (b) has highest EPSS+CVSS if no cross-asset option.
+       - Record chain if it spans 3+ stages.
+   - Deduplicate by sorted CVE ID set.
+   - Sort by risk score descending. Return top 20.
+   - Complexity: O(E × S) where E = entry-point CVEs, S = 10 stages. Bounded.
+
+3. **Score chains** — Composite 0–100:
+   ```
+   (stageSpan / 10) × 25          // breadth
+   + maxEPSS × 25                 // exploitability
+   + (maxCVSS / 10) × 20          // severity
+   + crossAssetBonus × 15         // 15 if 2+ assets, else 0
+   + kevBonus × 10                // 10 if any step is CISA KEV
+   + threatActorBonus × 5         // 5 if any step has named actor
+   ```
+
+4. **Break the Chain** — Count how many chains each CVE appears in. Sort by chains disrupted. Return top 10.
+
+**Exports:**
+```js
+export function computeKillChains(vulnData, userAssets = null)
+// Returns: { chains[], breakRecommendations[], stageDistribution, summary }
+```
+
+**Reference:** technique IDs must align with `server/lib/attackMapping.js` (lines 5–56).
+
+---
+
+### Step 2 — Backend Route: add to `server/index.js`
+
+Add `GET /api/kill-chains?timeRange=X` after the `/api/vulnerabilities` route (~line 252).
+
+- Uses `publicApiLimiter` (no auth required; auth is optional for asset filtering).
+- Reads cached vuln data via `getVulnData(timeRange)` (same as `/api/vulnerabilities`).
+- If auth header present, decodes JWT to get user email → `getUserAssets(email)` for filtering.
+- Caches result in DB cache with key `killchain:{timeRange}:{assetsHash}`.
+- Returns `{ success: true, data: { chains, breakRecommendations, stageDistribution, summary } }`.
+
+Pattern reference: existing `/api/vulnerabilities` route in `server/index.js`.
+
+---
+
+### Step 3 — Vercel Endpoint: `api/kill-chains.js` (new file)
+
+Mirror `api/vulnerabilities.js` pattern exactly:
+- Import `getVulnData` from `../server/lib/redis.js`
+- Import `validateTimeRange` from `../server/lib/validation.js`
+- Import `computeKillChains` from `../server/lib/killChainService.js`
+- GET only, no auth filtering (Vercel handler is simpler), `Cache-Control` header.
+
+---
+
+### Step 4 — Frontend Service: `src/services/killChainService.js` (new file)
+
+Follow `src/services/cloudStatusService.js` pattern exactly:
+- `CACHE_KEY_PREFIX = 'panoptes_killchain_v1'`, `CACHE_DURATION = 5 min`
+- `API_URL` from `VITE_API_URL` env or fallback to `/api/kill-chains`
+- Memory cache + localStorage cache with `getCached()` / `setCache()`
+- Cache keyed by `timeRange`
+- `fetchKillChains(timeRange, forceRefresh)` — tries auth header if access token available
+- `clearKillChainCache()` — clears all cached entries
+
+---
+
+### Step 5 — Frontend Components: `src/components/KillChain/` (new directory)
+
+**5a. `KillChain.jsx`** — Main view component
+
+Props: `{ timeRange }`
+
+Follow `Pulse.jsx` pattern:
+- State: `data, isLoading, error, expandedChain`
+- `loadData` via `useCallback` dependent on `timeRange`
+- `useEffect` for initial fetch + refetch on timeRange change
+- Loading state → skeleton / spinner
+- Error state → retry button
+- Empty state → Shield icon + "No attack chains detected"
+- Renders: summary stats cards, StageBar, ChainCard list, BreakTheChain table
+
+**5b. `ChainCard.jsx`** — Individual chain card
+
+Props: `{ chain, isExpanded, onToggle }`
+
+Collapsed: risk score badge (color by severity thresholds 80/60/40), stage flow as horizontal pills connected by `ChevronRight` icons, asset names below each stage, KEV/threat actor tags.
+
+Expanded: adds full CVE detail per step (ID, asset, CVSS, EPSS, description snippet).
+
+Stage flow uses CSS flexbox with `ChevronRight` from lucide-react between steps. No graph library.
+
+**5c. `BreakTheChain.jsx`** — Priority patching table
+
+Props: `{ recommendations }`
+
+Table columns: Priority | CVE ID | Asset | Stage | Chains Disrupted | Risk Reduction
+
+**5d. `StageBar.jsx`** — Stage coverage horizontal bar
+
+Props: `{ distribution }` (`{ stage_key: count }`)
+
+10-column CSS grid. Each column: proportional bar + stage label. Zero-count stages grayed out.
+
+**5e. `KillChain.css`** — All styles
+
+Use existing CSS variables: `--severity-critical`, `--severity-high`, `--severity-medium`, `--severity-low` and their `-bg`/`-border` variants. Use `--surface-glass`, `--border-subtle`, `--radius-lg`, `--bg-tertiary`, `--text-muted`, `--space-*`, `--text-sm`. Follow Pulse.css patterns.
+
+---
+
+### Step 6 — Integration: modify existing files
+
+**`src/App.jsx`:**
+- Add import: `import KillChain from './components/KillChain/KillChain'`
+- Line 409–440 conditional rendering: add `activeView === 'killchain'` branch between pulse and dashboard:
+  ```jsx
+  {activeView === 'pulse' ? (
+      <Pulse userCloudRegions={userCloudRegions} />
+  ) : activeView === 'killchain' ? (
+      <KillChain timeRange={timeRange} />
+  ) : (
+      <> <Dashboard .../> <aside>...</aside> </>
+  )}
+  ```
+
+**`src/components/Sidebar/Sidebar.jsx`:**
+- Add import: `Link2` from lucide-react (chain link icon)
+- Lines 241–250 (Monitor section nav): add new nav item after "The Pulse":
+  ```jsx
+  <div
+      className={`sidebar-nav-item ${activeView === 'killchain' ? 'active' : ''}`}
+      onClick={() => onActiveViewChange && onActiveViewChange('killchain')}
+      title="Kill Chain Composer"
+  >
+      <Link2 />
+      {!isCollapsed && <span className="sidebar-nav-item-text">Kill Chains</span>}
+  </div>
+  ```
+
+No changes needed to Sidebar props — it already has `activeView` and `onActiveViewChange`.
+
+---
+
+## Files Summary
+
+| File | Action | ~Lines |
+|------|--------|--------|
+| `server/lib/killChainService.js` | **Create** | ~200 |
+| `server/index.js` | **Modify** — add route + import | +30 |
+| `api/kill-chains.js` | **Create** | ~30 |
+| `src/services/killChainService.js` | **Create** | ~80 |
+| `src/components/KillChain/KillChain.jsx` | **Create** | ~150 |
+| `src/components/KillChain/KillChain.css` | **Create** | ~300 |
+| `src/components/KillChain/ChainCard.jsx` | **Create** | ~130 |
+| `src/components/KillChain/BreakTheChain.jsx` | **Create** | ~60 |
+| `src/components/KillChain/StageBar.jsx` | **Create** | ~50 |
+| `src/App.jsx` | **Modify** — add import + view branch | +5 |
+| `src/components/Sidebar/Sidebar.jsx` | **Modify** — add import + nav item | +10 |
+
+**No new npm dependencies.** Uses existing Recharts (optional for StageBar), lucide-react, date-fns.
+
+---
+
+## Verification
+
+1. Start dev server (`npm run dev`) — confirm no build errors
+2. Backend: `curl localhost:PORT/api/kill-chains?timeRange=7d` — verify JSON response with chains/recommendations
+3. Frontend: click "Kill Chains" in sidebar → verify view renders
+4. Test with no vuln data cached → verify 503 / loading state
+5. Test with CVEs spanning < 3 stages → verify empty state renders
+6. Test with authenticated user with asset selections → verify chains are filtered
+7. Test time range toggle → verify kill chain view re-fetches
+8. Test refresh button → verify cache clear + reload
+9. Test collapsed sidebar → verify icon-only nav item renders

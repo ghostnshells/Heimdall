@@ -1,4 +1,4 @@
-Security Audit Report — Horus Scope
+Security Audit Report — Panoptes
 Date: 10 March 2026
 
 Overall Assessment: GOOD — Strong fundamentals with actionable improvements

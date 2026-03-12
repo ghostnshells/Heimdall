@@ -3,7 +3,7 @@
 # Emergency cache population script (requires ALLOW_CRON_BYPASS=true in Vercel)
 # This bypasses authentication to get your app working immediately
 
-URL="https://horus-scope.vercel.app/api/cron/refresh"
+URL="https://panoptes.net/api/cron/refresh"
 
 echo "🚀 Emergency Cache Population"
 echo "================================"

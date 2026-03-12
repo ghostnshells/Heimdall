@@ -79,7 +79,7 @@ export const NEWS_SOURCES = [
 ];
 
 // Cache configuration
-const CACHE_KEY = 'horus_scope_news_cache';
+const CACHE_KEY = 'panoptes_news_cache';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
 /**

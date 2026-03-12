@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: horus-scope-api
+    name: panoptes-api
     env: node
     plan: free
     buildCommand: npm install

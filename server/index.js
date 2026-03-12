@@ -1,4 +1,4 @@
-// Horus Scope Backend Server
+// Panoptes Backend Server
 // Express server with all API routes, enrichment pipeline, and scheduled cache refresh
 // Designed for Railway persistent server deployment (replaces Vercel serverless functions)
 
@@ -1025,7 +1025,7 @@ cron.schedule('0 */6 * * *', async () => {
 // ===================
 
 async function initialize() {
-    console.log('Horus Scope Backend Server starting...');
+    console.log('Panoptes Backend Server starting...');
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Assets configured: ${ASSETS.length}`);
 

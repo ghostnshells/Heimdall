@@ -1,0 +1,45 @@
+Tier 1 — Team ($)
+
+  - Multi-user workspaces — shared dashboards, role-based access (analyst, manager, admin)
+  - Custom asset inventory — let teams define their full stack beyond the preset assets, including internal software
+  and versions
+  - Alerting & notifications — email/Slack/Teams webhooks when critical CVEs hit their asset list or SLA deadlines
+  approach
+  - Export & reporting — PDF/CSV reports for compliance meetings, scheduled weekly digests
+  - Jira/ServiceNow integration — push CVEs directly into ticketing workflows from lifecycle management
+
+  Tier 2 — Business ($$)
+
+  - Prioritized remediation scoring — combine EPSS + asset criticality + exposure context into a single "fix this
+  first" ranking (this is what sets paid vuln tools apart)
+  - SBOM ingestion — let teams upload/connect Software Bill of Materials and auto-match CVEs against their actual
+  dependency tree
+  - Compliance mapping — map vulnerabilities to frameworks (NIST 800-53, SOC 2, ISO 27001, PCI-DSS) for audit
+  readiness
+  - Historical trending & metrics — mean-time-to-remediate, SLA compliance rate, vuln backlog over time — the KPIs
+  managers report to leadership
+  - API access — let teams programmatically query their vuln data for internal tooling and automation
+
+  Tier 3 — Enterprise ($$$)
+
+  - SSO/SAML — non-negotiable for enterprise procurement
+  - Multi-tenant org management — parent/child accounts for MSSPs managing multiple clients
+  - Attack surface discovery — automated external asset discovery (subdomain enumeration, exposed services) that feeds
+   into the vuln pipeline
+  - Threat intelligence feeds — integrate commercial TI feeds beyond CISA (e.g., MITRE, vendor advisories, dark web
+  mentions of their stack)
+  - SLA policy enforcement with escalation chains — auto-escalate to manager if SLA breaches, audit-ready proof of
+  process
+  - Data retention & audit logs — long-term storage with tamper-proof audit trails for compliance
+
+  Highest ROI to build first
+
+  1. Alerting — low effort, immediate value, drives daily engagement
+  2. Custom asset inventory + SBOM — makes the product relevant to their stack instead of generic
+  3. Prioritized remediation scoring — this is the core differentiator; every team drowns in CVEs and needs "what
+  matters to us"
+  4. Team workspaces + RBAC — gates the paid tier naturally (single user = free, team = paid)
+
+  The free tier you have now is already a strong funnel. The paid gate should be at the point where a team needs
+  collaboration, custom assets, and actionable prioritization — that's where individual tool becomes enterprise
+  product.

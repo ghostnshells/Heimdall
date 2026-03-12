@@ -1,7 +1,7 @@
-# Horus Scope On-Premises Deployment Guide
+# Panoptes On-Premises Deployment Guide
 ## Windows Server with IIS
 
-This guide walks you through deploying Horus Scope on a Windows Server with IIS as a reverse proxy.
+This guide walks you through deploying Panoptes on a Windows Server with IIS as a reverse proxy.
 
 ---
 
@@ -39,7 +39,7 @@ Open PowerShell as Administrator and run:
 
 ```powershell
 # Navigate to project directory
-cd C:\path\to\Horus Scope
+cd C:\path\to\Panoptes
 
 # Install dependencies
 npm install
@@ -83,7 +83,7 @@ npm install -g pm2-windows-startup
 
 # Start the backend server
 cd server
-pm2 start index.js --name "horus-scope-api"
+pm2 start index.js --name "panoptes-api"
 
 # Configure PM2 to start on Windows boot
 pm2-startup install
@@ -99,17 +99,17 @@ pm2 save
 1. Open IIS Manager
 2. Right-click "Sites" → "Add Website"
 3. Configure:
-   - **Site name:** Horus Scope
-   - **Physical path:** `C:\path\to\Horus Scope\dist` (the built frontend)
+   - **Site name:** Panoptes
+   - **Physical path:** `C:\path\to\Panoptes\dist` (the built frontend)
    - **Binding:**
      - Type: http (or https if you have SSL cert)
      - IP: All Unassigned (or specific IP)
      - Port: 80 (or 443 for HTTPS)
-     - Host name: (optional) horus-scope.yourdomain.local
+     - Host name: (optional) panoptes.yourdomain.local
 
 ### Configure URL Rewrite Rules
 
-1. Select your Horus Scope site in IIS Manager
+1. Select your Panoptes site in IIS Manager
 2. Double-click "URL Rewrite"
 3. Click "Add Rule(s)..." → "Blank rule"
 
@@ -144,10 +144,10 @@ Allow HTTP/HTTPS traffic through Windows Firewall:
 
 ```powershell
 # Allow HTTP (port 80)
-New-NetFirewallRule -DisplayName "Horus Scope HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
+New-NetFirewallRule -DisplayName "Panoptes HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
 
 # Allow HTTPS (port 443) - if using SSL
-New-NetFirewallRule -DisplayName "Horus Scope HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+New-NetFirewallRule -DisplayName "Panoptes HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
 ```
 
 ---
@@ -155,8 +155,8 @@ New-NetFirewallRule -DisplayName "Horus Scope HTTPS" -Direction Inbound -Protoco
 ## Step 7: Test the Deployment
 
 1. Open a browser on another machine on your network
-2. Navigate to `http://your-server-ip/` or `http://horus-scope.yourdomain.local/`
-3. You should see the Horus Scope dashboard
+2. Navigate to `http://your-server-ip/` or `http://panoptes.yourdomain.local/`
+3. You should see the Panoptes dashboard
 
 ---
 
@@ -167,7 +167,7 @@ For internal networks, you can:
 ### Option A: Self-Signed Certificate
 ```powershell
 # Generate self-signed cert (PowerShell as Admin)
-New-SelfSignedCertificate -DnsName "horus-scope.yourdomain.local" -CertStoreLocation "cert:\LocalMachine\My"
+New-SelfSignedCertificate -DnsName "panoptes.yourdomain.local" -CertStoreLocation "cert:\LocalMachine\My"
 ```
 
 ### Option B: Internal CA Certificate
@@ -186,17 +186,17 @@ Then in IIS:
 pm2 status
 
 # View backend logs
-pm2 logs horus-scope-api
+pm2 logs panoptes-api
 
 # Restart backend
-pm2 restart horus-scope-api
+pm2 restart panoptes-api
 
 # Update application
-cd C:\path\to\Horus Scope
+cd C:\path\to\Panoptes
 git pull
 npm install
 npm run build
-pm2 restart horus-scope-api
+pm2 restart panoptes-api
 ```
 
 ---
@@ -205,7 +205,7 @@ pm2 restart horus-scope-api
 
 ### Backend not responding
 ```powershell
-pm2 logs horus-scope-api --lines 50
+pm2 logs panoptes-api --lines 50
 ```
 
 ### IIS 500 errors

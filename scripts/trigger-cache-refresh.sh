@@ -9,8 +9,8 @@
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <VERCEL_URL> [CRON_SECRET]"
-    echo "Example: $0 https://horus-scope.vercel.app"
-    echo "Example: $0 https://horus-scope.vercel.app my-secret-token"
+    echo "Example: $0 https://panoptes.net"
+    echo "Example: $0 https://panoptes.net my-secret-token"
     exit 1
 fi
 
