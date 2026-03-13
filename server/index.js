@@ -100,7 +100,23 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'"],
+            connectSrc: [
+                "'self'",
+                "https://api.rss2json.com",
+                "https://api.msrc.microsoft.com",
+                "https://id.cisco.com",
+                "https://apix.cisco.com",
+                "https://www.mozilla.org",
+                "https://api.github.com",
+                "https://services.nvd.nist.gov",
+                "https://www.cisa.gov",
+            ],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            objectSrc: ["'none'"],
+            scriptSrcAttr: ["'none'"],
+            upgradeInsecureRequests: [],
         }
     }
 }));
