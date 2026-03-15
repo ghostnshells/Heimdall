@@ -1,15 +1,9 @@
 import React, { useMemo } from 'react';
-import { Shield, AlertTriangle, CheckCircle2, Building2, Clock } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import AssetCard, { AssetCardSkeleton } from './AssetCard';
 import TimeRangeToggle from '../TimeRangeToggle/TimeRangeToggle';
 import VulnerabilityChart from './VulnerabilityChart';
-import {
-    ASSETS,
-    getAssetsByCategory,
-    getAssetsByVendorGroup,
-    getAssetsByVendorAndSubcategory,
-    getSubcategoriesForVendor
-} from '../../data/assets';
+import { ASSETS } from '../../data/assets';
 import { isSLABreached, getSLADaysRemaining } from '../../services/lifecycleService';
 import './Dashboard.css';
 
@@ -75,7 +69,6 @@ const SLASummary = ({ vulnerabilities, vulnStatuses, slaConfig }) => {
 };
 
 const Dashboard = ({
-    selectedCategory,
     timeRange,
     onTimeRangeChange,
     vulnerabilities,
@@ -85,85 +78,28 @@ const Dashboard = ({
     loadingProgress,
     onAssetClick,
     selectedAsset,
-    viewMode = 'category',
-    selectedVendor,
-    selectedSubcategory,
     isAuthenticated = false,
     vulnStatuses = {},
     slaConfig,
     userAssets
 }) => {
-    // Get assets based on view mode, filtered by user's selected assets
+    // Get assets filtered by user's selected assets
     const getFilteredAssets = () => {
-        let result;
-        if (viewMode === 'vendor') {
-            if (selectedSubcategory && selectedVendor) {
-                result = getAssetsByVendorAndSubcategory(selectedVendor, selectedSubcategory);
-            } else if (selectedVendor) {
-                result = getAssetsByVendorGroup(selectedVendor);
-            } else {
-                result = ASSETS;
-            }
-        } else {
-            // Category view (default)
-            result = selectedCategory === 'All'
-                ? ASSETS
-                : getAssetsByCategory(selectedCategory);
-        }
-        // Filter by user's monitored assets if set
         if (userAssets) {
             const allowedSet = new Set(userAssets);
-            result = result.filter(a => allowedSet.has(a.id));
+            return ASSETS.filter(a => allowedSet.has(a.id));
         }
-        return result;
+        return ASSETS;
     };
 
     const assets = getFilteredAssets();
-
-    // Get title based on view mode and selection
-    const getTitle = () => {
-        if (viewMode === 'vendor') {
-            if (selectedSubcategory && selectedVendor) {
-                return `${selectedVendor} - ${selectedSubcategory}`;
-            }
-            if (selectedVendor) {
-                return selectedVendor;
-            }
-            return 'All Vendors';
-        }
-        return selectedCategory === 'All' ? 'Security Dashboard' : selectedCategory;
-    };
-
-    // Group assets by subcategory when viewing a vendor (for better organization)
-    const getGroupedAssets = () => {
-        if (viewMode === 'vendor' && selectedVendor && !selectedSubcategory) {
-            const subcategories = getSubcategoriesForVendor(selectedVendor);
-            if (subcategories.length > 1) {
-                const allowedSet = userAssets ? new Set(userAssets) : null;
-                const groups = subcategories.map(subcat => {
-                    let subcatAssets = getAssetsByVendorAndSubcategory(selectedVendor, subcat);
-                    if (allowedSet) {
-                        subcatAssets = subcatAssets.filter(a => allowedSet.has(a.id));
-                    }
-                    return { name: subcat, assets: subcatAssets };
-                }).filter(group => group.assets.length > 0);
-                if (groups.length > 0) return groups;
-            }
-        }
-        return null;
-    };
-
-    const groupedAssets = getGroupedAssets();
 
     return (
         <main className="dashboard">
             <header className="dashboard-header">
                 <div>
                     <h1 className="dashboard-title">
-                        {viewMode === 'vendor' && selectedVendor && (
-                            <Building2 className="title-icon" />
-                        )}
-                        {getTitle()}
+                        Security Dashboard
                     </h1>
                     <p className="dashboard-subtitle">
                         Monitoring {assets.length} assets for vulnerabilities
@@ -229,64 +165,35 @@ const Dashboard = ({
             {/* Assets Grid */}
             {!isLoading && (
                 <section className="assets-section">
-                    {/* Grouped by subcategory (vendor view with vendor selected) */}
-                    {groupedAssets ? (
-                        <>
-                            {groupedAssets.map(group => (
-                                <div key={group.name} className="asset-group">
-                                    <div className="section-header">
-                                        <h2 className="section-title subcategory-title">
-                                            {group.name}
-                                            <span className="asset-count">({group.assets.length})</span>
-                                        </h2>
-                                    </div>
-                                    <div className="assets-grid">
-                                        {group.assets.map(asset => (
-                                            <AssetCard
-                                                key={asset.id}
-                                                asset={asset}
-                                                vulnCounts={vulnCounts?.[asset.id] || {}}
-                                                onClick={onAssetClick}
-                                                isSelected={selectedAsset?.id === asset.id}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </>
-                    ) : (
-                        <>
-                            <div className="section-header">
-                                <h2 className="section-title">
-                                    <Shield />
-                                    Monitored Assets
-                                </h2>
-                            </div>
+                    <div className="section-header">
+                        <h2 className="section-title">
+                            <Shield />
+                            Monitored Assets
+                        </h2>
+                    </div>
 
-                            {assets.length === 0 ? (
-                                <div className="empty-state">
-                                    <div className="empty-state-icon">
-                                        <AlertTriangle />
-                                    </div>
-                                    <h3 className="empty-state-title">No assets found</h3>
-                                    <p className="empty-state-text">
-                                        There are no assets in this {viewMode === 'vendor' ? 'vendor group' : 'category'}.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="assets-grid">
-                                    {assets.map(asset => (
-                                        <AssetCard
-                                            key={asset.id}
-                                            asset={asset}
-                                            vulnCounts={vulnCounts?.[asset.id] || {}}
-                                            onClick={onAssetClick}
-                                            isSelected={selectedAsset?.id === asset.id}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </>
+                    {assets.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">
+                                <AlertTriangle />
+                            </div>
+                            <h3 className="empty-state-title">No assets found</h3>
+                            <p className="empty-state-text">
+                                There are no monitored assets.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="assets-grid">
+                            {assets.map(asset => (
+                                <AssetCard
+                                    key={asset.id}
+                                    asset={asset}
+                                    vulnCounts={vulnCounts?.[asset.id] || {}}
+                                    onClick={onAssetClick}
+                                    isSelected={selectedAsset?.id === asset.id}
+                                />
+                            ))}
+                        </div>
                     )}
                 </section>
             )}

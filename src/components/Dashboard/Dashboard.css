@@ -121,30 +121,6 @@
     gap: var(--space-4);
 }
 
-/* Asset Groups (Vendor View) */
-.asset-group {
-    margin-bottom: var(--space-6);
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.asset-group:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.subcategory-title {
-    font-size: var(--text-lg);
-    color: var(--text-secondary);
-}
-
-.subcategory-title .asset-count {
-    font-size: var(--text-sm);
-    font-weight: var(--font-normal);
-    color: var(--text-tertiary);
-    margin-left: var(--space-2);
-}
-
 /* Loading State */
 .loading-container {
     display: flex;

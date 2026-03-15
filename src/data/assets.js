@@ -611,19 +611,6 @@ export const ASSETS = [
     }
 ];
 
-// Get unique categories
-export const getCategories = () => {
-    return [...new Set(ASSETS.map(asset => asset.category))];
-};
-
-// Get assets by category
-export const getAssetsByCategory = (category) => {
-    if (!category || category === 'All') {
-        return ASSETS;
-    }
-    return ASSETS.filter(asset => asset.category === category);
-};
-
 // Get asset by ID
 export const getAssetById = (id) => {
     return ASSETS.find(asset => asset.id === id);
@@ -633,84 +620,6 @@ export const getAssetById = (id) => {
 export const getAssetKeywords = (assetId) => {
     const asset = getAssetById(assetId);
     return asset ? asset.keywords : [];
-};
-
-// ============================================
-// Vendor Grouping Helper Functions
-// ============================================
-
-// Get list of unique vendor groups that have assets
-export const getVendorGroups = () => {
-    const vendorGroups = [...new Set(ASSETS.map(asset => asset.vendorGroup))];
-    return vendorGroups.filter(Boolean).sort();
-};
-
-// Get assets by vendor group
-export const getAssetsByVendorGroup = (vendorGroup) => {
-    if (!vendorGroup || vendorGroup === 'All') {
-        return ASSETS;
-    }
-    return ASSETS.filter(asset => asset.vendorGroup === vendorGroup);
-};
-
-// Get subcategories for a vendor (based on asset categories within that vendor group)
-export const getSubcategoriesForVendor = (vendorGroup) => {
-    const vendorAssets = getAssetsByVendorGroup(vendorGroup);
-    const subcategories = [...new Set(vendorAssets.map(asset => asset.category))];
-    return subcategories.filter(Boolean).sort();
-};
-
-// Get assets by vendor and subcategory (category within a vendor group)
-export const getAssetsByVendorAndSubcategory = (vendorGroup, subcategory) => {
-    return ASSETS.filter(asset =>
-        asset.vendorGroup === vendorGroup && asset.category === subcategory
-    );
-};
-
-// Get vulnerability counts for a vendor group
-export const getVendorVulnCounts = (vendorGroup, vulnCounts) => {
-    const vendorAssets = getAssetsByVendorGroup(vendorGroup);
-    let total = 0;
-    let critical = 0;
-    let high = 0;
-    let medium = 0;
-    let low = 0;
-
-    vendorAssets.forEach(asset => {
-        const counts = vulnCounts[asset.id];
-        if (counts) {
-            total += counts.total || 0;
-            critical += counts.critical || 0;
-            high += counts.high || 0;
-            medium += counts.medium || 0;
-            low += counts.low || 0;
-        }
-    });
-
-    return { total, critical, high, medium, low };
-};
-
-// Get vulnerability counts for a subcategory within a vendor
-export const getSubcategoryVulnCounts = (vendorGroup, subcategory, vulnCounts) => {
-    const assets = getAssetsByVendorAndSubcategory(vendorGroup, subcategory);
-    let total = 0;
-    let critical = 0;
-    let high = 0;
-    let medium = 0;
-    let low = 0;
-
-    assets.forEach(asset => {
-        const counts = vulnCounts[asset.id];
-        if (counts) {
-            total += counts.total || 0;
-            critical += counts.critical || 0;
-            high += counts.high || 0;
-            medium += counts.medium || 0;
-            low += counts.low || 0;
-        }
-    });
-
-    return { total, critical, high, medium, low };
 };
 
 // Get sub-products for an asset (for drill-down view)

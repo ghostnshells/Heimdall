@@ -33,7 +33,6 @@ import { getUserAssets, getCloudRegions } from './services/userService';
 
 function App() {
     // State
-    const [selectedCategory, setSelectedCategory] = useState('All');
     const [timeRange, setTimeRange] = useState('30d');
     const [vulnerabilities, setVulnerabilities] = useState(null);
     const [stats, setStats] = useState(null);
@@ -79,11 +78,6 @@ function App() {
     // Verification banner
     const [showVerificationBanner, setShowVerificationBanner] = useState(true);
 
-    // Vendor view mode state
-    const [viewMode, setViewMode] = useState('category'); // 'category' | 'vendor'
-    const [selectedVendor, setSelectedVendor] = useState(null);
-    const [selectedSubcategory, setSelectedSubcategory] = useState(null);
-
     // Active view state: 'dashboard' | 'pulse'
     const [activeView, setActiveView] = useState('dashboard');
 
@@ -121,29 +115,6 @@ function App() {
             setUserCloudRegions(null); // null = not logged in, no filtering
         }
     }, [isLoggedIn]);
-
-    // Handle view mode change
-    const handleViewModeChange = (mode) => {
-        setViewMode(mode);
-        // Reset selections when switching modes
-        if (mode === 'category') {
-            setSelectedVendor(null);
-            setSelectedSubcategory(null);
-        } else {
-            setSelectedCategory('All');
-        }
-    };
-
-    // Handle vendor selection
-    const handleVendorSelect = (vendor) => {
-        setSelectedVendor(vendor);
-        setSelectedSubcategory(null); // Reset subcategory when vendor changes
-    };
-
-    // Handle subcategory selection
-    const handleSubcategorySelect = (subcat) => {
-        setSelectedSubcategory(subcat);
-    };
 
     // Handle login/signup
     const handleLogin = async (email, password, isSignupMode) => {
@@ -371,29 +342,12 @@ function App() {
             />
 
             <Sidebar
-                selectedCategory={selectedCategory}
-                onCategorySelect={(cat) => {
-                    setSelectedCategory(cat);
-                    setIsMobileSidebarOpen(false);
-                }}
                 vulnCounts={filteredVulnCounts}
                 lastUpdated={vulnerabilities?.fetchedAt}
                 onRefresh={handleRefresh}
                 isLoading={isLoading}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                viewMode={viewMode}
-                onViewModeChange={handleViewModeChange}
-                selectedVendor={selectedVendor}
-                onVendorSelect={(vendor) => {
-                    handleVendorSelect(vendor);
-                    setIsMobileSidebarOpen(false);
-                }}
-                selectedSubcategory={selectedSubcategory}
-                onSubcategorySelect={(subcat) => {
-                    handleSubcategorySelect(subcat);
-                    setIsMobileSidebarOpen(false);
-                }}
                 activeView={activeView}
                 onActiveViewChange={(view) => {
                     setActiveView(view);
@@ -414,7 +368,6 @@ function App() {
                 ) : (
                     <>
                         <Dashboard
-                            selectedCategory={selectedCategory}
                             timeRange={timeRange}
                             onTimeRangeChange={handleTimeRangeChange}
                             vulnerabilities={filteredVulnerabilities}
@@ -424,9 +377,6 @@ function App() {
                             loadingProgress={loadingProgress}
                             onAssetClick={handleAssetClick}
                             selectedAsset={selectedAsset}
-                            viewMode={viewMode}
-                            selectedVendor={selectedVendor}
-                            selectedSubcategory={selectedSubcategory}
                             isAuthenticated={isLoggedIn}
                             vulnStatuses={vulnStatuses}
                             slaConfig={slaConfig}
