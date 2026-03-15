@@ -442,31 +442,29 @@ function App() {
                 ) : activeView === 'pulse' ? (
                     <Pulse userCloudRegions={userCloudRegions} />
                 ) : (
-                    <>
-                        <Dashboard
-                            timeRange={timeRange}
-                            onTimeRangeChange={handleTimeRangeChange}
-                            vulnerabilities={filteredVulnerabilities}
-                            vulnCounts={filteredVulnCounts}
-                            stats={filteredStats}
-                            isLoading={isLoading}
-                            loadingProgress={loadingProgress}
-                            onAssetClick={handleAssetClick}
-                            selectedAsset={selectedAsset}
-                            isAuthenticated={isLoggedIn}
-                            vulnStatuses={vulnStatuses}
-                            slaConfig={slaConfig}
-                            userAssets={userAssets}
-                        />
-
-                        <aside className={`news-panel ${isNewsFeedCollapsed ? 'collapsed' : ''}`}>
-                            <NewsFeed
-                                isCollapsed={isNewsFeedCollapsed}
-                                onToggleCollapse={() => setIsNewsFeedCollapsed(!isNewsFeedCollapsed)}
-                            />
-                        </aside>
-                    </>
+                    <Dashboard
+                        timeRange={timeRange}
+                        onTimeRangeChange={handleTimeRangeChange}
+                        vulnerabilities={filteredVulnerabilities}
+                        vulnCounts={filteredVulnCounts}
+                        stats={filteredStats}
+                        isLoading={isLoading}
+                        loadingProgress={loadingProgress}
+                        onAssetClick={handleAssetClick}
+                        selectedAsset={selectedAsset}
+                        isAuthenticated={isLoggedIn}
+                        vulnStatuses={vulnStatuses}
+                        slaConfig={slaConfig}
+                        userAssets={userAssets}
+                    />
                 )}
+
+                <aside className={`news-panel ${isNewsFeedCollapsed ? 'collapsed' : ''}`}>
+                    <NewsFeed
+                        isCollapsed={isNewsFeedCollapsed}
+                        onToggleCollapse={() => setIsNewsFeedCollapsed(!isNewsFeedCollapsed)}
+                    />
+                </aside>
             </main>
 
             <AlertsList
