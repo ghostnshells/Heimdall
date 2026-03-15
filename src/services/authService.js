@@ -257,62 +257,12 @@ export async function getOAuthProviders() {
 }
 
 /**
- * Start OAuth flow — opens popup window to provider's consent screen.
- * The callback page writes the result to localStorage; we poll for it here.
+ * Start OAuth flow — redirects the current window to the provider's consent screen.
+ * After authentication, the server redirects back to /?oauth=success.
+ * App.jsx handles the return by calling refreshTokens() + getCurrentUser().
  */
 export function startOAuthFlow(provider) {
-    return new Promise((resolve, reject) => {
-        // Clear any stale result before opening the popup
-        localStorage.removeItem('panoptes_oauth_result');
-
-        const width = 500;
-        const height = 650;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
-
-        const popup = window.open(
-            `${AUTH_API}/oauth/${provider}`,
-            `oauth-${provider}`,
-            `width=${width},height=${height},left=${left},top=${top},popup=yes`
-        );
-
-        if (!popup) {
-            reject(new Error('Popup was blocked. Please allow popups for this site.'));
-            return;
-        }
-
-        let settled = false;
-
-        const pollTimer = setInterval(() => {
-            // Check localStorage for the OAuth result written by the callback page
-            try {
-                const raw = localStorage.getItem('panoptes_oauth_result');
-                if (raw) {
-                    localStorage.removeItem('panoptes_oauth_result');
-                    clearInterval(pollTimer);
-                    settled = true;
-
-                    const result = JSON.parse(raw);
-                    if (result.success === 'true' && result.accessToken && result.email) {
-                        storeAuth(result.accessToken, { email: result.email, emailVerified: true });
-                        try { popup.close(); } catch {}
-                        resolve({ email: result.email, emailVerified: true });
-                    } else {
-                        try { popup.close(); } catch {}
-                        reject(new Error(result.error || 'OAuth authentication failed'));
-                    }
-                    return;
-                }
-            } catch {}
-
-            // If the popup was closed without writing a result, the user cancelled
-            if (popup.closed && !settled) {
-                clearInterval(pollTimer);
-                settled = true;
-                reject(new Error('Authentication cancelled'));
-            }
-        }, 300);
-    });
+    window.location.href = `${AUTH_API}/oauth/${provider}`;
 }
 
 /**

@@ -29,7 +29,8 @@ import {
     clearAuth,
     storeAuth,
     updateStoredUser,
-    resendVerification
+    resendVerification,
+    getCurrentUser
 } from './services/authService';
 import { getUserAssets, getCloudRegions } from './services/userService';
 
@@ -111,16 +112,32 @@ function App() {
             window.history.replaceState(null, '', '/');
         }
 
-        // Handle OAuth callback fallback (non-popup redirect)
-        const oauthSuccess = params.get('success');
-        const oauthToken = params.get('accessToken');
-        const oauthEmail = params.get('email');
-        if (oauthSuccess === 'true' && oauthToken && oauthEmail) {
-            storeAuth(oauthToken, { email: oauthEmail, emailVerified: true });
-            setUser({ email: oauthEmail, emailVerified: true });
-            setIsLoggedIn(true);
-            setShowLanding(false);
+        // Handle OAuth redirect return
+        if (params.get('oauth') === 'success') {
             window.history.replaceState(null, '', '/');
+            // The refresh token cookie was set by the server callback.
+            // Exchange it for an access token and fetch user info.
+            refreshTokens()
+                .then(() => getCurrentUser())
+                .then((userData) => {
+                    storeAuth(getAccessToken(), userData);
+                    setUser(userData);
+                    setIsLoggedIn(true);
+                    setShowLanding(false);
+                    setShowVerificationBanner(false);
+                })
+                .catch(() => {
+                    clearAuth();
+                    setUser(null);
+                    setIsLoggedIn(false);
+                });
+        }
+
+        const oauthError = params.get('oauth_error');
+        if (oauthError) {
+            window.history.replaceState(null, '', '/');
+            setShowLanding(false);
+            setShowLoginModal(true);
         }
     }, []);
 

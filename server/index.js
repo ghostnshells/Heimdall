@@ -593,40 +593,18 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res) => {
     const provider = req.params.provider;
     const { code, state, error: oauthError } = req.query;
 
-    // Send the OAuth result back to the main window via localStorage.
-    // A per-request nonce allows the inline script past the CSP policy.
-    const sendResult = (params) => {
-        const nonce = crypto.randomBytes(16).toString('base64');
-        const payload = JSON.stringify(params);
-        res.setHeader(
-            'Content-Security-Policy',
-            `default-src 'self'; script-src 'nonce-${nonce}'`
-        );
-        res.send(`
-            <!DOCTYPE html>
-            <html><head><title>Authenticating...</title></head>
-            <body><script nonce="${nonce}">
-                try {
-                    localStorage.setItem('panoptes_oauth_result', ${JSON.stringify(payload)});
-                } catch(e) {}
-                window.close();
-                setTimeout(function() { window.location.href = '/'; }, 500);
-            </script><p>Signing you in...</p></body></html>
-        `);
-    };
-
     if (oauthError) {
-        return sendResult({ error: oauthError });
+        return res.redirect(`/?oauth_error=${encodeURIComponent(oauthError)}`);
     }
 
     if (!code || !state) {
-        return sendResult({ error: 'Missing code or state parameter' });
+        return res.redirect('/?oauth_error=Missing+code+or+state');
     }
 
     // Validate state
     const stateData = oauthStates.get(state);
     if (!stateData || stateData.provider !== provider) {
-        return sendResult({ error: 'Invalid OAuth state — possible CSRF' });
+        return res.redirect('/?oauth_error=Invalid+state');
     }
     oauthStates.delete(state);
 
@@ -649,19 +627,19 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res) => {
         const tokens = generateTokens(user.email);
         await storeRefreshToken(tokens.refreshToken, user.email);
 
-        // Set refresh token cookie
+        // Set refresh token cookie — the SPA will call /refresh to get an access token
         res.cookie('refreshToken', tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // lax needed for OAuth redirect flow
+            sameSite: 'lax',
             path: '/api/auth',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        sendResult({ success: 'true', accessToken: tokens.accessToken, email: user.email });
+        res.redirect('/?oauth=success');
     } catch (error) {
         console.error(`OAuth callback error (${provider}):`, error);
-        sendResult({ error: error.message || 'OAuth authentication failed' });
+        res.redirect(`/?oauth_error=${encodeURIComponent(error.message || 'Authentication failed')}`);
     }
 });
 

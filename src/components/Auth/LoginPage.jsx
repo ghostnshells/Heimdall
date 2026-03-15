@@ -74,22 +74,11 @@ const LoginPage = ({ onLogin, onForgotPassword, onOAuthLogin }) => {
         }
     };
 
-    const handleOAuth = async (provider) => {
+    const handleOAuth = (provider) => {
         setError(null);
         setOauthLoading(provider);
-
-        try {
-            const user = await startOAuthFlow(provider);
-            if (onOAuthLogin) {
-                onOAuthLogin(user);
-            }
-        } catch (err) {
-            if (err.message !== 'Authentication cancelled') {
-                setError(err.message);
-            }
-        } finally {
-            setOauthLoading(null);
-        }
+        startOAuthFlow(provider);
+        // Page navigates away — no cleanup needed
     };
 
     const hasOAuth = availableProviders.length > 0;
