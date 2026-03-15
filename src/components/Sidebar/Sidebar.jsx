@@ -21,6 +21,7 @@ import {
     Layers,
     Menu,
     Activity,
+    Link2,
     LogIn,
     LogOut,
     Settings
@@ -246,6 +247,14 @@ const Sidebar = ({
                         >
                             <Activity />
                             {!isCollapsed && <span className="sidebar-nav-item-text">The Pulse</span>}
+                        </div>
+                        <div
+                            className={`sidebar-nav-item ${activeView === 'killchain' ? 'active' : ''}`}
+                            onClick={() => onActiveViewChange && onActiveViewChange('killchain')}
+                            title="Kill Chain"
+                        >
+                            <Link2 />
+                            {!isCollapsed && <span className="sidebar-nav-item-text">Kill Chain</span>}
                         </div>
                     </nav>
                 </div>

@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import AlertsList from './components/AlertsList/AlertsList';
 import NewsFeed from './components/NewsFeed';
 import Pulse from './components/Pulse/Pulse';
+import KillChain from './components/KillChain/KillChain';
 import LoginPage from './components/Auth/LoginPage';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import ResetPassword from './components/Auth/ResetPassword';
@@ -406,7 +407,9 @@ function App() {
             />
 
             <main className="main-content">
-                {activeView === 'pulse' ? (
+                {activeView === 'killchain' ? (
+                    <KillChain timeRange={timeRange} />
+                ) : activeView === 'pulse' ? (
                     <Pulse userCloudRegions={userCloudRegions} />
                 ) : (
                     <>

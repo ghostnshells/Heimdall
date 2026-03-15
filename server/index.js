@@ -62,6 +62,7 @@ import {
     setBulkStatus
 } from './lib/lifecycleService.js';
 import { fetchCloudStatus, computeDailyStatus, computeOverallStatus } from './lib/cloudStatusService.js';
+import { getKillChains } from './lib/killChainService.js';
 import { validatePasswordStrength, validateCveId, validateTimeRange } from './lib/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -260,6 +261,37 @@ app.get('/api/vulnerabilities', publicApiLimiter, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching vulnerabilities:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+        });
+    }
+});
+
+// ===================
+// API Routes — Kill Chains
+// ===================
+
+app.get('/api/kill-chains', publicApiLimiter, async (req, res) => {
+    try {
+        const timeRange = req.query.timeRange || '7d';
+        if (!validateTimeRange(timeRange)) {
+            return res.status(400).json({ error: 'Invalid timeRange. Must be one of: 24h, 7d, 30d, 90d, 119d' });
+        }
+
+        const data = await getKillChains(timeRange);
+
+        if (!data) {
+            return res.status(503).json({
+                error: 'Cache not ready',
+                message: 'Vulnerability data is still being fetched. Please try again in a few minutes.',
+                success: false
+            });
+        }
+
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Error computing kill chains:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error',
@@ -1049,8 +1081,13 @@ async function initialize() {
     try {
         await initializeDatabase();
     } catch (err) {
-        console.error('FATAL: Database initialisation failed:', err.message);
-        process.exit(1);
+        if (process.env.NODE_ENV === 'production') {
+            console.error('FATAL: Database initialisation failed:', err.message);
+            process.exit(1);
+        }
+        console.warn('WARNING: Database initialisation failed:', err.message);
+        console.warn('Some features (kill chain, auth, lifecycle) require a database.');
+        console.warn('Cloud status (Pulse) and direct NVD proxy will still work.');
     }
 
     // Check if cache needs refresh
