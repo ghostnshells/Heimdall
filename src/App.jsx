@@ -11,6 +11,7 @@ import ForgotPassword from './components/Auth/ForgotPassword';
 import ResetPassword from './components/Auth/ResetPassword';
 import VerifyEmail from './components/Auth/VerifyEmail';
 import Settings from './components/Settings/Settings';
+import LandingPage from './components/LandingPage/LandingPage';
 import {
     fetchAllVulnerabilities,
     getVulnerabilityStats,
@@ -26,6 +27,7 @@ import {
     logout as authLogout,
     refreshTokens,
     clearAuth,
+    storeAuth,
     updateStoredUser,
     resendVerification
 } from './services/authService';
@@ -78,6 +80,9 @@ function App() {
     // Verification banner
     const [showVerificationBanner, setShowVerificationBanner] = useState(true);
 
+    // Landing page state — skip for logged-in users
+    const [showLanding, setShowLanding] = useState(!getStoredUser());
+
     // Active view state: 'dashboard' | 'pulse'
     const [activeView, setActiveView] = useState('dashboard');
 
@@ -90,13 +95,31 @@ function App() {
         if (path === '/verify-email' && token) {
             setAuthView('verify');
             setAuthToken(token);
+            setShowLanding(false);
         } else if (path === '/reset-password' && token) {
             setAuthView('reset');
             setAuthToken(token);
+            setShowLanding(false);
         } else if (path === '/settings') {
             if (isAuthenticated()) {
                 setAuthView('settings');
             }
+            setShowLanding(false);
+            window.history.replaceState(null, '', '/');
+        } else if (path === '/app') {
+            setShowLanding(false);
+            window.history.replaceState(null, '', '/');
+        }
+
+        // Handle OAuth callback fallback (non-popup redirect)
+        const oauthSuccess = params.get('success');
+        const oauthToken = params.get('accessToken');
+        const oauthEmail = params.get('email');
+        if (oauthSuccess === 'true' && oauthToken && oauthEmail) {
+            storeAuth(oauthToken, { email: oauthEmail, emailVerified: true });
+            setUser({ email: oauthEmail, emailVerified: true });
+            setIsLoggedIn(true);
+            setShowLanding(false);
             window.history.replaceState(null, '', '/');
         }
     }, []);
@@ -137,6 +160,7 @@ function App() {
         setIsLoggedIn(false);
         setUserAssets(null);
         setAuthView(null);
+        setShowLanding(true);
     };
 
     // Handle auth view completion (verify/reset done)
@@ -150,6 +174,15 @@ function App() {
             setUser(updated);
             updateStoredUser({ emailVerified: true });
         }
+    };
+
+    // Handle OAuth login (user already authenticated via popup)
+    const handleOAuthLogin = (user) => {
+        setUser(user);
+        setIsLoggedIn(true);
+        setShowLoginModal(false);
+        setShowLanding(false);
+        setShowVerificationBanner(false); // OAuth users are pre-verified
     };
 
     // Handle forgot password
@@ -263,6 +296,32 @@ function App() {
         if (!selectedAsset || !vulnerabilities?.byAsset) return [];
         return vulnerabilities.byAsset[selectedAsset.id] || [];
     };
+
+    // Render landing page
+    if (showLanding) {
+        return (
+            <>
+                <LandingPage
+                    onEnterApp={() => setShowLanding(false)}
+                    onSignIn={() => {
+                        setShowLanding(false);
+                        setShowLoginModal(true);
+                    }}
+                />
+                {/* Login Modal on landing page */}
+                {showLoginModal && !isLoggedIn && (
+                    <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <LoginPage onLogin={(email, password, isSignup) => {
+                                handleLogin(email, password, isSignup);
+                                setShowLanding(false);
+                            }} onForgotPassword={handleForgotPassword} onOAuthLogin={handleOAuthLogin} />
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
 
     // Render special auth views (full-page)
     if (authView === 'verify') {
@@ -447,7 +506,7 @@ function App() {
             {showLoginModal && !isLoggedIn && (
                 <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
                     <div onClick={(e) => e.stopPropagation()}>
-                        <LoginPage onLogin={handleLogin} onForgotPassword={handleForgotPassword} />
+                        <LoginPage onLogin={handleLogin} onForgotPassword={handleForgotPassword} onOAuthLogin={handleOAuthLogin} />
                     </div>
                 </div>
             )}

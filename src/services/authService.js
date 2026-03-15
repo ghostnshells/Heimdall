@@ -244,6 +244,71 @@ export async function forgotPassword(email) {
 }
 
 /**
+ * Get available OAuth providers from the server
+ */
+export async function getOAuthProviders() {
+    try {
+        const response = await fetch(`${AUTH_API}/oauth/providers`);
+        const data = await response.json();
+        return data.providers || [];
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * Start OAuth flow — opens popup window to provider's consent screen
+ * Returns a promise that resolves with { accessToken, email } on success
+ */
+export function startOAuthFlow(provider) {
+    return new Promise((resolve, reject) => {
+        const width = 500;
+        const height = 650;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        const popup = window.open(
+            `${AUTH_API}/oauth/${provider}`,
+            `oauth-${provider}`,
+            `width=${width},height=${height},left=${left},top=${top},popup=yes`
+        );
+
+        if (!popup) {
+            reject(new Error('Popup was blocked. Please allow popups for this site.'));
+            return;
+        }
+
+        // Listen for the postMessage from the callback page
+        const handler = (event) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data?.type !== 'oauth-callback') return;
+
+            window.removeEventListener('message', handler);
+            clearInterval(pollTimer);
+
+            const { success, accessToken: token, email, error } = event.data;
+            if (success === 'true' && token && email) {
+                storeAuth(token, { email, emailVerified: true });
+                resolve({ email, emailVerified: true });
+            } else {
+                reject(new Error(error || 'OAuth authentication failed'));
+            }
+        };
+
+        window.addEventListener('message', handler);
+
+        // Also poll for popup close (user manually closed it)
+        const pollTimer = setInterval(() => {
+            if (popup.closed) {
+                clearInterval(pollTimer);
+                window.removeEventListener('message', handler);
+                reject(new Error('Authentication cancelled'));
+            }
+        }, 500);
+    });
+}
+
+/**
  * Reset password with token from email
  */
 export async function resetPasswordWithToken(token, password) {

@@ -62,6 +62,12 @@ export async function validatePassword(email, password) {
     }
 
     const user = rows[0];
+
+    // OAuth-only users have no password — can't log in with email/password
+    if (!user.password_hash) {
+        throw new Error('Invalid credentials');
+    }
+
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
         throw new Error('Invalid credentials');
@@ -170,6 +176,57 @@ export async function getUser(email) {
         createdAt: rows[0].created_at.toISOString(),
         emailVerified: rows[0].email_verified
     };
+}
+
+/**
+ * Find or create a user from an OAuth provider callback.
+ * If the user already exists (by email), link the OAuth account.
+ * OAuth users are auto-verified (provider already validated their email).
+ */
+export async function findOrCreateOAuthUser(provider, providerId, email, displayName, avatarUrl) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if this OAuth account is already linked
+    const { rows: existing } = await pool.query(
+        `SELECT email FROM oauth_accounts WHERE provider = $1 AND provider_id = $2`,
+        [provider, providerId]
+    );
+
+    if (existing.length > 0) {
+        // Already linked — return the user
+        const user = await getUser(existing[0].email);
+        return user;
+    }
+
+    // Check if user exists by email
+    const { rows: users } = await pool.query(
+        `SELECT email FROM users WHERE email = $1`,
+        [normalizedEmail]
+    );
+
+    if (users.length === 0) {
+        // Create new user (no password — OAuth-only)
+        await pool.query(
+            `INSERT INTO users (email, password_hash, email_verified) VALUES ($1, NULL, TRUE)`,
+            [normalizedEmail]
+        );
+    } else {
+        // Existing user — ensure email is verified (provider confirmed it)
+        await pool.query(
+            `UPDATE users SET email_verified = TRUE WHERE email = $1`,
+            [normalizedEmail]
+        );
+    }
+
+    // Link OAuth account
+    await pool.query(
+        `INSERT INTO oauth_accounts (provider, provider_id, email, display_name, avatar_url)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (provider, provider_id) DO UPDATE SET email = $3, display_name = $4, avatar_url = $5`,
+        [provider, providerId, normalizedEmail, displayName || null, avatarUrl || null]
+    );
+
+    return await getUser(normalizedEmail);
 }
 
 /**

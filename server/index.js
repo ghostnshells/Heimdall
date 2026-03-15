@@ -49,8 +49,10 @@ import {
     verifyEmail,
     requestPasswordReset,
     resetPassword,
-    verifyAccessToken
+    verifyAccessToken,
+    findOrCreateOAuthUser
 } from './lib/auth.js';
+import { getAuthorizationUrl, exchangeCodeForUser, getAvailableProviders } from './lib/oauthProviders.js';
 import { getUserAssets, setUserAssets } from './lib/userAssetsService.js';
 import { getUserCloudRegions, setUserCloudRegions } from './lib/userCloudRegionsService.js';
 import {
@@ -111,6 +113,9 @@ app.use(helmet({
                 "https://api.github.com",
                 "https://services.nvd.nist.gov",
                 "https://www.cisa.gov",
+                "https://accounts.google.com",
+                "https://login.microsoftonline.com",
+                "https://github.com",
             ],
             baseUri: ["'self'"],
             formAction: ["'self'"],
@@ -527,6 +532,125 @@ app.post('/api/auth/reset-password', async (req, res) => {
         }
         console.error('Reset password error:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ===================
+// API Routes — OAuth / SSO
+// ===================
+
+// Pending OAuth states (in-memory, short-lived)
+const oauthStates = new Map();
+
+// Cleanup stale OAuth states every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [state, data] of oauthStates) {
+        if (now - data.createdAt > 10 * 60 * 1000) { // 10 minute expiry
+            oauthStates.delete(state);
+        }
+    }
+}, 5 * 60 * 1000);
+
+// GET /api/auth/oauth/providers — list configured providers
+app.get('/api/auth/oauth/providers', (req, res) => {
+    res.json({ providers: getAvailableProviders() });
+});
+
+// GET /api/auth/oauth/:provider — redirect to provider's consent screen
+app.get('/api/auth/oauth/:provider', (req, res) => {
+    try {
+        const provider = req.params.provider;
+        const available = getAvailableProviders();
+        if (!available.includes(provider)) {
+            return res.status(400).json({ error: `Provider "${provider}" is not available` });
+        }
+
+        const state = crypto.randomBytes(32).toString('hex');
+        const origin = req.query.origin || req.headers.referer || '/';
+        oauthStates.set(state, { provider, origin, createdAt: Date.now() });
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const redirectUri = `${baseUrl}/api/auth/oauth/${provider}/callback`;
+
+        const authUrl = getAuthorizationUrl(provider, redirectUri, state);
+        res.redirect(authUrl);
+    } catch (error) {
+        console.error('OAuth redirect error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/auth/oauth/:provider/callback — handle provider callback
+app.get('/api/auth/oauth/:provider/callback', async (req, res) => {
+    const provider = req.params.provider;
+    const { code, state, error: oauthError } = req.query;
+
+    // Build a redirect that sends the result back to the SPA
+    const sendResult = (params) => {
+        const qs = new URLSearchParams(params).toString();
+        res.send(`
+            <!DOCTYPE html>
+            <html><head><title>Authenticating...</title></head>
+            <body><script>
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'oauth-callback', ${Object.entries(params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ')} }, window.location.origin);
+                    window.close();
+                } else {
+                    window.location.href = '/?${qs}';
+                }
+            </script><p>Authenticating... you may close this window.</p></body></html>
+        `);
+    };
+
+    if (oauthError) {
+        return sendResult({ error: oauthError });
+    }
+
+    if (!code || !state) {
+        return sendResult({ error: 'Missing code or state parameter' });
+    }
+
+    // Validate state
+    const stateData = oauthStates.get(state);
+    if (!stateData || stateData.provider !== provider) {
+        return sendResult({ error: 'Invalid OAuth state — possible CSRF' });
+    }
+    oauthStates.delete(state);
+
+    try {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const redirectUri = `${baseUrl}/api/auth/oauth/${provider}/callback`;
+
+        // Exchange code for user info
+        const oauthUser = await exchangeCodeForUser(provider, code, redirectUri);
+
+        // Find or create user in our database
+        const user = await findOrCreateOAuthUser(
+            provider,
+            oauthUser.providerId,
+            oauthUser.email,
+            oauthUser.displayName,
+            oauthUser.avatarUrl
+        );
+
+        // Generate JWT tokens (same as regular login)
+        const tokens = generateTokens(user.email);
+        await storeRefreshToken(tokens.refreshToken, user.email);
+
+        // Set refresh token cookie
+        res.cookie('refreshToken', tokens.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax', // lax needed for OAuth redirect flow
+            path: '/api/auth',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        sendResult({ success: 'true', accessToken: tokens.accessToken, email: user.email });
+    } catch (error) {
+        console.error(`OAuth callback error (${provider}):`, error);
+        sendResult({ error: error.message || 'OAuth authentication failed' });
     }
 });
 

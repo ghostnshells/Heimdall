@@ -85,6 +85,18 @@ export async function initializeDatabase() {
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS oauth_accounts (
+                provider       TEXT NOT NULL,
+                provider_id    TEXT NOT NULL,
+                email          TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+                display_name   TEXT,
+                avatar_url     TEXT,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (provider, provider_id)
+            );
+
+            ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+
             CREATE TABLE IF NOT EXISTS user_assets (
                 user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
                 asset_id   TEXT NOT NULL,
