@@ -257,11 +257,14 @@ export async function getOAuthProviders() {
 }
 
 /**
- * Start OAuth flow — opens popup window to provider's consent screen
- * Returns a promise that resolves with { accessToken, email } on success
+ * Start OAuth flow — opens popup window to provider's consent screen.
+ * The callback page writes the result to localStorage; we poll for it here.
  */
 export function startOAuthFlow(provider) {
     return new Promise((resolve, reject) => {
+        // Clear any stale result before opening the popup
+        localStorage.removeItem('panoptes_oauth_result');
+
         const width = 500;
         const height = 650;
         const left = window.screenX + (window.outerWidth - width) / 2;
@@ -278,33 +281,37 @@ export function startOAuthFlow(provider) {
             return;
         }
 
-        // Listen for the postMessage from the callback page
-        const handler = (event) => {
-            if (event.origin !== window.location.origin) return;
-            if (event.data?.type !== 'oauth-callback') return;
+        let settled = false;
 
-            window.removeEventListener('message', handler);
-            clearInterval(pollTimer);
-
-            const { success, accessToken: token, email, error } = event.data;
-            if (success === 'true' && token && email) {
-                storeAuth(token, { email, emailVerified: true });
-                resolve({ email, emailVerified: true });
-            } else {
-                reject(new Error(error || 'OAuth authentication failed'));
-            }
-        };
-
-        window.addEventListener('message', handler);
-
-        // Also poll for popup close (user manually closed it)
         const pollTimer = setInterval(() => {
-            if (popup.closed) {
+            // Check localStorage for the OAuth result written by the callback page
+            try {
+                const raw = localStorage.getItem('panoptes_oauth_result');
+                if (raw) {
+                    localStorage.removeItem('panoptes_oauth_result');
+                    clearInterval(pollTimer);
+                    settled = true;
+
+                    const result = JSON.parse(raw);
+                    if (result.success === 'true' && result.accessToken && result.email) {
+                        storeAuth(result.accessToken, { email: result.email, emailVerified: true });
+                        try { popup.close(); } catch {}
+                        resolve({ email: result.email, emailVerified: true });
+                    } else {
+                        try { popup.close(); } catch {}
+                        reject(new Error(result.error || 'OAuth authentication failed'));
+                    }
+                    return;
+                }
+            } catch {}
+
+            // If the popup was closed without writing a result, the user cancelled
+            if (popup.closed && !settled) {
                 clearInterval(pollTimer);
-                window.removeEventListener('message', handler);
+                settled = true;
                 reject(new Error('Authentication cancelled'));
             }
-        }, 500);
+        }, 300);
     });
 }
 

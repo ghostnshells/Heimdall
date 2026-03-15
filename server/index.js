@@ -552,6 +552,14 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000);
 
+// Resolve base URL for OAuth redirect URIs — prefer explicit env var over request headers
+function getBaseUrl(req) {
+    if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
+    // Behind a reverse proxy, X-Forwarded-Proto is more reliable than req.protocol
+    const proto = req.get('x-forwarded-proto')?.split(',')[0]?.trim() || req.protocol;
+    return `${proto}://${req.get('host')}`;
+}
+
 // GET /api/auth/oauth/providers — list configured providers
 app.get('/api/auth/oauth/providers', (req, res) => {
     res.json({ providers: getAvailableProviders() });
@@ -570,8 +578,7 @@ app.get('/api/auth/oauth/:provider', (req, res) => {
         const origin = req.query.origin || req.headers.referer || '/';
         oauthStates.set(state, { provider, origin, createdAt: Date.now() });
 
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const redirectUri = `${baseUrl}/api/auth/oauth/${provider}/callback`;
+        const redirectUri = `${getBaseUrl(req)}/api/auth/oauth/${provider}/callback`;
 
         const authUrl = getAuthorizationUrl(provider, redirectUri, state);
         res.redirect(authUrl);
@@ -586,20 +593,22 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res) => {
     const provider = req.params.provider;
     const { code, state, error: oauthError } = req.query;
 
-    // Build a redirect that sends the result back to the SPA
+    // Send the OAuth result back to the main window via localStorage
+    // This is more reliable than postMessage since window.opener is often
+    // stripped by browsers during cross-origin redirect chains
     const sendResult = (params) => {
-        const qs = new URLSearchParams(params).toString();
+        const payload = JSON.stringify(params);
         res.send(`
             <!DOCTYPE html>
             <html><head><title>Authenticating...</title></head>
             <body><script>
-                if (window.opener) {
-                    window.opener.postMessage({ type: 'oauth-callback', ${Object.entries(params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ')} }, window.location.origin);
-                    window.close();
-                } else {
-                    window.location.href = '/?${qs}';
-                }
-            </script><p>Authenticating... you may close this window.</p></body></html>
+                try {
+                    localStorage.setItem('panoptes_oauth_result', ${JSON.stringify(payload)});
+                } catch(e) {}
+                window.close();
+                // If window.close() doesn't work (common), redirect to app
+                setTimeout(function() { window.location.href = '/'; }, 500);
+            </script><p>Signing you in...</p></body></html>
         `);
     };
 
@@ -619,8 +628,7 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res) => {
     oauthStates.delete(state);
 
     try {
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const redirectUri = `${baseUrl}/api/auth/oauth/${provider}/callback`;
+        const redirectUri = `${getBaseUrl(req)}/api/auth/oauth/${provider}/callback`;
 
         // Exchange code for user info
         const oauthUser = await exchangeCodeForUser(provider, code, redirectUri);
